@@ -1,0 +1,15 @@
+ChargeGrid Intelligence — NexusCharge
+Sprint 3 — Prototipagem Funcional e Integração
+Desafio FIAP + GoodWe EV Challenge 2026
+
+Integrantes:
+Alan Junio Araujo de Souza - RM 574112
+Arthur Vettorazzo de Souza - RM 569445
+Brayan Barbosa Dos Santos - RM 573682
+Giovanne Gomes Petenuci - RM 574091
+Gustavo Zibini Belizario - RM 561376
+Luiz Otávio Brito Freixo - RM 569977
+
+Link do vídeo (YouTube, não listado): https://youtu.be/VrtqYSeRMHs?si=0YpC6TuVnXAM3no0
+
+Link do repositório GitHub: https://github.com/FIAP-Time6-GoodWe-2026/Sprint3-PrototipagemFuncionalIntegracao
