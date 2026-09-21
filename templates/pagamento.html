@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Pagamento — {{ sessao.session_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   PAGAMENTO — resumo da recarga à esquerda, método à direita.
+   Foco visual único: o TOTAL A PAGAR. Nenhum outro elemento usa o tamanho
+   herói nem a cor primária cheia, exceto o botão que efetiva o pagamento.
+   ============================================================================= */
+
+.pag-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-5);
+    align-items: start;
+}
+
+/* ── Resumo ──────────────────────────────────────────────────────────────── */
+.resumo-topo {
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding-bottom: var(--sp-4);
+    border-bottom: 1px solid var(--cor-borda);
+    margin-bottom: var(--sp-4);
+}
+.resumo-icone {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: var(--r-md);
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    display: flex; align-items: center; justify-content: center;
+}
+.resumo-icone svg {
+    width: 20px; height: 20px;
+    stroke: var(--cor-primaria-texto); fill: none; stroke-width: 2;
+}
+
+.linha {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-3) 0;
+    font-size: var(--fs-sm);
+}
+.linha + .linha { border-top: 1px solid var(--cor-borda); }
+.linha dt { color: var(--cor-texto-secundario); }
+.linha dd {
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+.linha .detalhe {
+    display: block;
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-regular);
+    color: var(--cor-texto-secundario);
+    margin-top: 2px;
+}
+
+.somatorio { margin-top: var(--sp-4); padding-top: var(--sp-4);
+             border-top: 2px solid var(--cor-borda); }
+.somatorio .linha { border: none; padding: var(--sp-2) 0; }
+.somatorio .linha.abatimento dd { color: var(--cor-livre-texto); }
+
+.total-bloco {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: var(--sp-4);
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--cor-borda);
+}
+.total-bloco .rotulo { align-self: center; }
+
+/* ── Métodos ─────────────────────────────────────────────────────────────── */
+.metodo-card {
+    display: block;
+    padding: var(--sp-4);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    margin-bottom: var(--sp-3);
+    transition: border-color var(--t-base) var(--ease);
+}
+.metodo-card:hover:not(.desabilitado) { border-color: var(--cor-texto-secundario); }
+.metodo-card:has(input:checked) {
+    border-color: var(--cor-primaria);
+    border-width: 2px;
+    padding: calc(var(--sp-4) - 1px);
+}
+.metodo-card.desabilitado { opacity: 0.62; cursor: not-allowed; }
+
+.metodo-cabecalho {
+    display: flex; align-items: center; gap: var(--sp-3);
+}
+.metodo-cabecalho input { accent-color: var(--cor-primaria); width: 18px; height: 18px;
+                          flex: 0 0 18px; }
+.metodo-icone { width: 22px; height: 22px; flex: 0 0 22px; }
+.metodo-icone svg { width: 100%; height: 100%; stroke: var(--cor-texto-secundario);
+                    fill: none; stroke-width: 1.8; }
+.metodo-titulo { font-size: var(--fs-md); font-weight: var(--fw-semibold); flex: 1; }
+
+.selo-cashback {
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    padding: 3px var(--sp-2);
+    border-radius: var(--r-pill);
+    color: var(--cor-livre-texto);
+    border: 1px solid currentColor;
+    white-space: nowrap;
+}
+
+.metodo-corpo {
+    margin-top: var(--sp-3);
+    padding-left: calc(18px + var(--sp-3));
+    font-size: var(--fs-sm);
+    color: var(--cor-texto-secundario);
+    line-height: var(--lh-normal);
+}
+.metodo-card:not(:has(input:checked)) .metodo-corpo.so-ativo { display: none; }
+
+.saldo-linha {
+    display: flex; justify-content: space-between; gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    font-variant-numeric: tabular-nums;
+}
+.saldo-linha strong { color: var(--cor-texto); }
+
+/* ── QR Pix ──────────────────────────────────────────────────────────────── */
+.qr-caixa {
+    /* O elemento é um <span>: sem display de bloco, width e height são
+       ignorados e o SVG interno (width/height 100%) passa a resolver a
+       percentagem contra o cartão inteiro — o QR explodia para ~530px.
+       Só aparecia com o Pix selecionado, que é quando este bloco existe. */
+    display: block;
+    width: 190px; height: 190px;
+    margin: var(--sp-3) 0;
+    padding: var(--sp-3);
+    /* Fundo branco fixo: QR sobre superfície escura não é lido por leitor
+       nenhum, e o detalhe conta numa demonstração. */
+    background: #FFFFFF;
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    color: #0B0B0B;
+}
+.qr-aviso {
+    font-size: var(--fs-2xs);
+    color: var(--cor-vip-texto);
+    font-weight: var(--fw-semibold);
+}
+
+/* ── Cartão salvo ────────────────────────────────────────────────────────── */
+.cartao {
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-3);
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    margin-top: var(--sp-3);
+}
+.cartao-marca {
+    display: flex; align-items: center;
+    width: 38px; flex: 0 0 38px;
+}
+.cartao-marca span {
+    display: block; width: 22px; height: 22px; border-radius: 50%;
+}
+.cartao-marca span:first-child { background: #EB001B; }
+.cartao-marca span:last-child  { background: #F79E1B; margin-left: -10px;
+                                 mix-blend-mode: multiply; }
+.cartao-numero {
+    display: block;
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-sm);
+}
+
+/* ── Aviso de saldo insuficiente ────────────────────────────────────────── */
+.aviso-saldo {
+    display: flex; gap: var(--sp-3);
+    padding: var(--sp-3);
+    background: var(--cor-aviso-bg);
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    color: var(--cor-vip-texto);
+    line-height: var(--lh-normal);
+    margin-top: var(--sp-3);
+}
+.aviso-saldo svg { width: 18px; height: 18px; flex: 0 0 18px; margin-top: 1px;
+                   stroke: currentColor; fill: none; stroke-width: 2; }
+
+@media (max-width: 900px) {
+    .pag-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-info">
+            <h1>Pagamento</h1>
+            <div class="header-subtitle">
+                Sessão {{ sessao.session_id }} · {{ posto.nome or sessao.station_id }}
+            </div>
+        </div>
+        {% include "partials/_header_actions.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="pag-grid">
+
+        {# ── Resumo da recarga ──────────────────────────────────────── #}
+        <section class="card" aria-labelledby="tituloResumo">
+            <div class="resumo-topo">
+                <span class="resumo-icone" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                </span>
+                <div>
+                    <div class="card-titulo" id="tituloResumo">Recarga concluída</div>
+                    <div style="font-size:var(--fs-sm); color:var(--cor-texto-secundario)">
+                        {{ sessao.charger_id }} · {{ sessao.vehicle_id }} ·
+                        {{ sessao.user_name }}
+                    </div>
+                </div>
+            </div>
+
+            <dl>
+                <div class="linha">
+                    <dt>Duração</dt>
+                    <dd>{{ cobranca.duracao_min | brl(1) }} min</dd>
+                </div>
+                <div class="linha">
+                    <dt>Energia medida</dt>
+                    <dd>{{ cobranca.energia_kwh | brl(3) }} kWh</dd>
+                </div>
+                <div class="linha">
+                    <dt>Tarifa aplicada</dt>
+                    <dd>
+                        R$ {{ cobranca.tarifa_kwh | brl(4) }}/kWh
+                        <span class="detalhe">{{ sessao.user_type.name | tipo_pt }} ·
+                            fixada na conexão</span>
+                    </dd>
+                </div>
+                <div class="linha">
+                    <dt>Potência alocada</dt>
+                    <dd>
+                        {{ sessao.allocated_power_kw | brl(1) }} kW
+                        {% if sessao.allocated_power_kw < sessao.requested_power_kw - 0.1 %}
+                        <span class="detalhe">reduzida por controle de demanda</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+
+            <div class="somatorio">
+                <div class="linha">
+                    <dt>Subtotal</dt>
+                    <dd>R$ {{ cobranca.subtotal_brl | brl }}</dd>
+                </div>
+                {% if cobranca.sinal_brl > 0 %}
+                <div class="linha abatimento">
+                    <dt>Sinal da reserva</dt>
+                    <dd>− R$ {{ cobranca.sinal_brl | brl }}</dd>
+                </div>
+                {% endif %}
+
+                <div class="total-bloco">
+                    <span class="rotulo">Total a pagar</span>
+                    <span class="heroi total-valor">R$ {{ cobranca.total_brl | brl }}</span>
+                </div>
+            </div>
+        </section>
+
+        {# ── Métodos de pagamento ───────────────────────────────────── #}
+        <section aria-labelledby="tituloMetodo">
+            <form method="POST" action="{{ url_for('pagamento_confirmar',
+                                                   session_id=sessao.session_id) }}"
+                  id="formPagamento">
+
+                <div class="card">
+                    <div class="card-titulo" id="tituloMetodo">Como você quer pagar</div>
+                    <div class="card-sub">
+                        {% if cobranca.gratuito %}
+                            O sinal da reserva cobriu toda a recarga. Confirme para
+                            emitir o recibo.
+                        {% else %}
+                            Escolha um meio de pagamento para concluir.
+                        {% endif %}
+                    </div>
+
+                    {# NexusCoin — método preferencial, com cashback #}
+                    <label class="metodo-card {% if not tem_saldo and not cobranca.gratuito %}desabilitado{% endif %}">
+                        <span class="metodo-cabecalho">
+                            <input type="radio" name="metodo" value="NEXUSCOIN"
+                                   {% if tem_saldo or cobranca.gratuito %}checked{% else %}disabled{% endif %}>
+                            <span class="metodo-icone" aria-hidden="true">
+                                <svg viewBox="0 0 100 100"><use href="#moeda-nexus"/></svg>
+                            </span>
+                            <span class="metodo-titulo">NexusCoin</span>
+                            {% if cobranca.cashback_nc > 0 %}
+                            <span class="selo-cashback">{{ cashback_pct }}% de volta</span>
+                            {% endif %}
+                        </span>
+
+                        <span class="metodo-corpo">
+                            <span class="saldo-linha">
+                                <span>Saldo atual</span>
+                                <strong>{{ saldo | brl }} NC</strong>
+                            </span>
+                            {% if tem_saldo and not cobranca.gratuito %}
+                            <span class="saldo-linha">
+                                <span>Saldo após o pagamento</span>
+                                <strong>{{ (saldo - cobranca.total_brl + cobranca.cashback_nc) | brl }} NC</strong>
+                            </span>
+                            <span class="saldo-linha" style="color:var(--cor-livre-texto)">
+                                <span>Cashback creditado</span>
+                                <strong style="color:inherit">+ {{ cobranca.cashback_nc | brl }} NC</strong>
+                            </span>
+                            {% endif %}
+
+                            {% if not tem_saldo and not cobranca.gratuito %}
+                            <span class="aviso-saldo">
+                                <svg viewBox="0 0 24 24" stroke-linecap="round"
+                                     stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                                <span>
+                                    Faltam {{ (cobranca.total_brl - saldo) | brl }} NC
+                                    para pagar com NexusCoin.
+                                </span>
+                            </span>
+                            {% endif %}
+                        </span>
+                    </label>
+
+                    {# Pix #}
+                    <label class="metodo-card">
+                        <span class="metodo-cabecalho">
+                            <input type="radio" name="metodo" value="PIX"
+                                   {% if not tem_saldo and not cobranca.gratuito %}checked{% endif %}>
+                            <span class="metodo-icone" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" stroke-linecap="round"
+                                     stroke-linejoin="round">
+                                    <rect x="3" y="3" width="7" height="7"/>
+                                    <rect x="14" y="3" width="7" height="7"/>
+                                    <rect x="3" y="14" width="7" height="7"/>
+                                    <line x1="14" y1="14" x2="14" y2="21"/>
+                                    <line x1="18" y1="14" x2="21" y2="14"/>
+                                    <line x1="21" y1="18" x2="21" y2="21"/>
+                                </svg>
+                            </span>
+                            <span class="metodo-titulo">Pix</span>
+                        </span>
+
+                        <span class="metodo-corpo so-ativo">
+                            <span class="qr-caixa" role="img"
+                                  aria-label="QR Code simulado para pagamento via Pix">
+                                {{ qr_svg | safe }}
+                            </span>
+                            <span class="qr-aviso">QR Code simulado — ambiente de demonstração</span>
+                        </span>
+                    </label>
+
+                    {# Cartão salvo #}
+                    <label class="metodo-card">
+                        <span class="metodo-cabecalho">
+                            <input type="radio" name="metodo" value="CARTAO">
+                            <span class="metodo-icone" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" stroke-linecap="round"
+                                     stroke-linejoin="round">
+                                    <rect x="1" y="4" width="22" height="16" rx="2"/>
+                                    <line x1="1" y1="10" x2="23" y2="10"/>
+                                </svg>
+                            </span>
+                            <span class="metodo-titulo">Cartão de crédito</span>
+                        </span>
+
+                        <span class="metodo-corpo so-ativo">
+                            <span class="cartao">
+                                <span class="cartao-marca" aria-hidden="true">
+                                    <span></span><span></span>
+                                </span>
+                                <span>
+                                    <span class="cartao-numero">
+                                        {{ cartao_bandeira }} •••• {{ cartao_final }}
+                                    </span>
+                                    <span class="detalhe" style="display:block;
+                                          font-size:var(--fs-2xs);
+                                          color:var(--cor-texto-secundario)">
+                                        Cartão salvo na conta
+                                    </span>
+                                </span>
+                            </span>
+                        </span>
+                    </label>
+
+                    <button type="submit" class="btn-bloco primario" id="btnPagar"
+                            style="margin-top: var(--sp-4);">
+                        <span class="rotulo-btn">
+                            {% if cobranca.gratuito %}
+                                Confirmar e emitir recibo
+                            {% else %}
+                                Pagar R$ {{ cobranca.total_brl | brl }}
+                            {% endif %}
+                        </span>
+                    </button>
+
+                    {% if not tem_saldo and not cobranca.gratuito %}
+                    <a href="{{ url_for('carteira', next=request.path) }}"
+                       class="btn-bloco neutro" style="margin-top: var(--sp-2);">
+                        <span class="rotulo-btn">Recarregar NexusCoin</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+
+// O botão trava no primeiro clique. Não é enfeite: sem isso um duplo clique
+// dispara dois POSTs e a proteção passa a depender só do servidor.
+document.getElementById('formPagamento').addEventListener('submit', function () {
+    var b = document.getElementById('btnPagar');
+    b.classList.add('processando');
+    b.querySelector('.rotulo-btn').textContent = 'Processando';
+});
+</script>
+{% endblock %}

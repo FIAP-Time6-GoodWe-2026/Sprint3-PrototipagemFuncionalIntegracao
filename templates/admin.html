@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Painel do operador — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   PAINEL DO OPERADOR — hub das telas administrativas.
+   Cada card de destino carrega um número vivo: o operador decide para onde ir
+   pelo dado, não pelo ícone.
+   ============================================================================= */
+
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-6);
+}
+.kpi {
+    padding: var(--sp-4);
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+}
+.kpi .rotulo { display: block; margin-bottom: var(--sp-2); }
+.kpi .kpi-valor {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-tight);
+}
+.kpi .kpi-nota {
+    font-size: var(--fs-xs);
+    color: var(--cor-texto-secundario);
+    margin-top: var(--sp-1);
+}
+
+.destinos {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-3);
+}
+
+.destino {
+    display: flex; align-items: flex-start; gap: var(--sp-4);
+    padding: var(--sp-5);
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-lg);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--t-base) var(--ease),
+                box-shadow var(--t-base) var(--ease);
+}
+.destino:hover {
+    border-color: var(--cor-primaria);
+    box-shadow: var(--sombra-md);
+}
+
+.destino-icone {
+    width: 42px; height: 42px; flex: 0 0 42px;
+    border-radius: var(--r-md);
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    display: flex; align-items: center; justify-content: center;
+}
+.destino-icone svg {
+    width: 20px; height: 20px;
+    stroke: var(--cor-primaria-texto); fill: none; stroke-width: 2;
+}
+
+.destino-corpo { flex: 1; min-width: 0; }
+/* Os filhos são <span> (para caber dentro de um <a>), então precisam de
+   display:block — senão título, descrição e dado escorrem na mesma linha. */
+.destino-nome {
+    display: block;
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    line-height: var(--lh-tight);
+    margin-bottom: var(--sp-1);
+}
+.destino-desc {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--cor-texto-secundario);
+    line-height: var(--lh-normal);
+    margin-bottom: var(--sp-3);
+}
+.destino-dado {
+    display: block;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+    color: var(--cor-primaria-texto);
+}
+
+.blocos-inferiores {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: var(--sp-3);
+    margin-top: var(--sp-6);
+}
+
+.reserva-item {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) 0;
+    border-top: 1px solid var(--cor-borda);
+    font-size: var(--fs-sm);
+}
+.reserva-item:first-of-type { border-top: none; }
+.reserva-conector { font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.reserva-usuario { color: var(--cor-texto-secundario); font-size: var(--fs-xs); }
+.reserva-tempo {
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-semibold);
+    color: var(--cor-info-texto);
+    white-space: nowrap;
+}
+
+@media (max-width: 1024px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    .destinos, .blocos-inferiores { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+    .kpis { grid-template-columns: 1fr 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <a href="{{ url_for('mapa') }}" class="back-button" title="Voltar ao mapa"
+           aria-label="Voltar ao mapa">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+        </a>
+        <div class="header-info">
+            <h1>Painel do operador</h1>
+            <div class="header-subtitle">
+                ChargeGrid Intelligence · 3 postos · 15 conectores GW11K-HCA-20
+            </div>
+        </div>
+        {% include "partials/_header_actions.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {# ── Indicadores ────────────────────────────────────────────────── #}
+    <div class="kpis">
+        <div class="kpi">
+            <span class="rotulo">Sessões ativas</span>
+            <div class="kpi-valor">{{ total_ativas }}</div>
+            <div class="kpi-nota">de 15 conectores</div>
+        </div>
+        <div class="kpi">
+            <span class="rotulo">Potência em uso</span>
+            <div class="kpi-valor">{{ potencia_em_uso | brl(1) }}<span
+                  style="font-size:var(--fs-md); color:var(--cor-texto-secundario)"> kW</span></div>
+            <div class="kpi-nota">limite de {{ potencia_limite | brl(0) }} kW</div>
+        </div>
+        <div class="kpi">
+            <span class="rotulo">Receita faturada</span>
+            <div class="kpi-valor">R$ {{ receita_historico | brl }}</div>
+            <div class="kpi-nota">{{ sessoes_historico }} sessões pagas no histórico</div>
+        </div>
+        <div class="kpi">
+            <span class="rotulo">Sinais retidos</span>
+            <div class="kpi-valor">R$ {{ receita_retida | brl }}</div>
+            <div class="kpi-nota">reservas não comparecidas</div>
+        </div>
+    </div>
+
+    {# ── Destinos ───────────────────────────────────────────────────── #}
+    <h2 class="secao-titulo">Ferramentas</h2>
+    <div class="destinos">
+
+        <a href="{{ url_for('dashboard') }}" class="destino">
+            <span class="destino-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+            </span>
+            <span class="destino-corpo">
+                <span class="destino-nome">Dashboard</span>
+                <span class="destino-desc">
+                    Potência por posto em tempo real, throttle, rebalanceamento
+                    e criação de sessões.
+                </span>
+                <span class="destino-dado">
+                    {{ total_ativas }} sessões · {{ potencia_em_uso | brl(1) }} kW alocados
+                </span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('relatorio_consolidado') }}" class="destino">
+            <span class="destino-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+            </span>
+            <span class="destino-corpo">
+                <span class="destino-nome">Relatório consolidado</span>
+                <span class="destino-desc">
+                    Todas as sessões, receita realizada e projetada, e o histórico
+                    de decisões de potência.
+                </span>
+                <span class="destino-dado">
+                    R$ {{ receita_historico | brl }} faturados
+                </span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('modbus_log') }}" class="destino">
+            <span class="destino-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+                </svg>
+            </span>
+            <span class="destino-corpo">
+                <span class="destino-nome">Log Modbus TCP</span>
+                <span class="destino-desc">
+                    Frames trocados com o GW11K-HCA-20 e o estado atual dos
+                    registradores da linha HCA G2.
+                </span>
+                <span class="destino-dado">{{ total_frames }} frames registrados</span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('testes') }}" class="destino">
+            <span class="destino-icone" aria-hidden="true">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 11 12 14 22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+            </span>
+            <span class="destino-corpo">
+                <span class="destino-nome">Suíte de testes</span>
+                <span class="destino-desc">
+                    Executa a bateria automatizada de regras de negócio direto
+                    do navegador, sem terminal.
+                </span>
+                <span class="destino-dado">pytest · execução sob demanda</span>
+            </span>
+        </a>
+    </div>
+
+    {# ── Reservas e manutenção ──────────────────────────────────────── #}
+    <div class="blocos-inferiores">
+
+        <div class="card">
+            <div class="card-titulo">Reservas ativas</div>
+            <div class="card-sub">
+                Conectores bloqueados com sinal pago. Se o prazo vencer, o sinal
+                é retido como taxa por bloqueio.
+            </div>
+
+            {% if reservas_ativas %}
+                {% for r in reservas_ativas %}
+                <div class="reserva-item">
+                    <span>
+                        <span class="reserva-conector">{{ r.charger_id }}</span><br>
+                        <span class="reserva-usuario">{{ r.usuario }}</span>
+                    </span>
+                    <span class="reserva-tempo">
+                        {{ (r.segundos_restantes // 60) }}min {{ '%02d'|format(r.segundos_restantes % 60) }}s
+                    </span>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="vazio">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <div class="vazio-titulo">Nenhuma reserva ativa</div>
+                    <p class="vazio-texto">
+                        As reservas aparecem aqui assim que um usuário bloqueia
+                        um conector pelo aplicativo.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Dados e manutenção</div>
+            <div class="card-sub">Exportação do histórico e reinício da demonstração.</div>
+
+            <a href="{{ url_for('export_csv') }}" class="btn-bloco neutro">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span class="rotulo-btn">Exportar sessões (CSV)</span>
+            </a>
+
+            <form method="POST" action="{{ url_for('demo_reset') }}"
+                  style="margin-top: var(--sp-3);">
+                <button type="submit" class="btn-bloco neutro">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="1 4 1 10 7 10"/>
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                    </svg>
+                    <span class="rotulo-btn">Restaurar estado de demonstração</span>
+                </button>
+            </form>
+
+            <p style="font-size:var(--fs-xs); color:var(--cor-texto-secundario);
+                      margin-top:var(--sp-3); line-height:var(--lh-normal)">
+                Restaurar zera saldos, reservas e histórico de pagamentos,
+                devolvendo as contas aos valores iniciais. As sessões em
+                andamento não são afetadas.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

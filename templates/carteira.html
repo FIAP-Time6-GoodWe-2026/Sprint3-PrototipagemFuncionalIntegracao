@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+
+{% block title %}Carteira NexusCoin — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   CARTEIRA — saldo, recarga e extrato.
+   Foco visual único: o saldo. Todo o resto é menor e neutro.
+   ============================================================================= */
+
+.carteira-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: var(--sp-5);
+    align-items: start;
+}
+
+/* ── Cartão do saldo ─────────────────────────────────────────────────────── */
+.saldo-card { text-align: center; }
+
+.saldo-marca { width: 56px; height: 56px; margin: 0 auto var(--sp-3); }
+
+.saldo-valor-linha {
+    display: flex; align-items: baseline; justify-content: center; gap: var(--sp-2);
+    margin-bottom: var(--sp-1);
+}
+.saldo-paridade {
+    font-size: var(--fs-xs);
+    color: var(--cor-texto-secundario);
+    margin-bottom: var(--sp-4);
+}
+
+.saldo-economia {
+    display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+    padding: var(--sp-3);
+    background: var(--cor-info-bg);
+    border-radius: var(--r-md);
+    font-size: var(--fs-sm);
+    color: var(--cor-info-texto);
+    font-weight: var(--fw-semibold);
+}
+.saldo-economia svg { width: 16px; height: 16px; stroke: currentColor;
+                      fill: none; stroke-width: 2; flex: 0 0 16px; }
+
+/* ── Recarga ─────────────────────────────────────────────────────────────── */
+.valores-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-4);
+}
+
+.valor-opcao {
+    padding: var(--sp-3);
+    font-family: inherit;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+    color: var(--cor-texto);
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    min-height: 44px;
+    transition: border-color var(--t-base) var(--ease),
+                background var(--t-base) var(--ease);
+}
+.valor-opcao:hover { border-color: var(--cor-texto-secundario); }
+.valor-opcao[aria-pressed="true"] {
+    border-color: var(--cor-primaria);
+    border-width: 2px;
+    background: var(--cor-superficie-2);
+}
+
+/* ── Escolha do método ───────────────────────────────────────────────────── */
+.metodos { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-4); }
+
+.metodo {
+    display: flex; align-items: center; gap: var(--sp-3);
+    padding: var(--sp-3);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    transition: border-color var(--t-base) var(--ease);
+}
+.metodo:hover { border-color: var(--cor-texto-secundario); }
+.metodo:has(input:checked) {
+    border-color: var(--cor-primaria);
+    border-width: 2px;
+    padding: calc(var(--sp-3) - 1px);
+}
+.metodo input { accent-color: var(--cor-primaria); width: 18px; height: 18px; }
+.metodo-nome {
+    display: block; font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+.metodo-desc {
+    display: block; font-size: var(--fs-xs); color: var(--cor-texto-secundario); }
+
+/* ── Extrato ─────────────────────────────────────────────────────────────── */
+.tipo-badge {
+    display: inline-block;
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.03em;
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-secundario);
+    white-space: nowrap;
+}
+.tipo-badge.recarga, .tipo-badge.cashback, .tipo-badge.estorno {
+    color: var(--cor-livre-texto);
+    border-color: currentColor;
+}
+.tipo-badge.pagamento, .tipo-badge.sinal, .tipo-badge.taxa {
+    color: var(--cor-texto);
+}
+
+@media (max-width: 900px) {
+    .carteira-grid { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <a href="{{ url_for('mapa') }}" class="back-button" title="Voltar ao mapa"
+           aria-label="Voltar ao mapa">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+        </a>
+        <div class="header-info">
+            <h1>Carteira NexusCoin</h1>
+            <div class="header-subtitle">Saldo, recargas e histórico de movimentações</div>
+        </div>
+        {% include "partials/_header_actions.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="carteira-grid">
+
+        {# ── Coluna esquerda: saldo + recarga ───────────────────────── #}
+        <div>
+            <div class="card saldo-card">
+                <svg class="saldo-marca" aria-hidden="true"><use href="#marca-nexus"/></svg>
+
+                <div class="rotulo">Saldo disponível</div>
+                <div class="saldo-valor-linha">
+                    <span class="heroi saldo-valor">{{ saldo | brl }}</span>
+                    <span class="rotulo">NC</span>
+                </div>
+                <div class="saldo-paridade">1 NexusCoin = R$ 1,00</div>
+
+                {% if cashback_total > 0 %}
+                <div class="saldo-economia">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                    Você já economizou {{ cashback_total | brl }} NC em cashback
+                </div>
+                {% else %}
+                <div class="saldo-economia">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                    Pague com NexusCoin e receba {{ cashback_pct }}% de volta
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card" style="margin-top: var(--sp-4);">
+                <div class="card-titulo">Recarregar</div>
+                <div class="card-sub">
+                    Escolha um valor e o meio de pagamento. O crédito entra na hora.
+                </div>
+
+                <form method="POST" action="{{ url_for('carteira_recarregar') }}"
+                      id="formRecarga">
+                    {% if volta_para %}
+                    <input type="hidden" name="next" value="{{ volta_para }}">
+                    {% endif %}
+
+                    <div class="valores-grid" role="group" aria-label="Valores de recarga">
+                        {% for v in valores %}
+                        <button type="button" class="valor-opcao" data-valor="{{ '%.2f'|format(v) }}"
+                                aria-pressed="{{ 'true' if loop.index == 3 else 'false' }}">
+                            R$ {{ v | brl(0) }}
+                        </button>
+                        {% endfor %}
+                    </div>
+
+                    <div class="campo">
+                        <label for="valor">Outro valor (R$)</label>
+                        <input type="text" id="valor" name="valor" inputmode="decimal"
+                               value="100,00" required
+                               aria-describedby="ajudaValor">
+                        <div class="ajuda" id="ajudaValor">
+                            Entre R$ {{ '%.2f'|format(1.0) | replace('.', ',') }}
+                            e R$ 5.000,00 por recarga.
+                        </div>
+                    </div>
+
+                    <div class="metodos" role="radiogroup" aria-label="Meio de pagamento">
+                        <label class="metodo">
+                            <input type="radio" name="metodo" value="PIX" checked>
+                            <span>
+                                <span class="metodo-nome">Pix</span>
+                                <span class="metodo-desc">Compensação imediata</span>
+                            </span>
+                        </label>
+                        <label class="metodo">
+                            <input type="radio" name="metodo" value="CARTAO">
+                            <span>
+                                <span class="metodo-nome">{{ cartao_bandeira }} •••• {{ cartao_final }}</span>
+                                <span class="metodo-desc">Cartão salvo na conta</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-bloco primario" id="btnRecarregar">
+                        <span class="rotulo-btn">Adicionar <span id="btnValor">100,00</span> NC</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        {# ── Coluna direita: extrato ────────────────────────────────── #}
+        <div class="card">
+            <div class="card-titulo">Extrato</div>
+            <div class="card-sub">Movimentações mais recentes primeiro.</div>
+
+            {% if extrato %}
+            <div class="tabela-scroll">
+                <table class="tabela">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data</th>
+                            <th scope="col">Tipo</th>
+                            <th scope="col">Descrição</th>
+                            <th scope="col" style="text-align:right">Valor (NC)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in extrato %}
+                        <tr>
+                            <td style="white-space:nowrap; color:var(--cor-texto-secundario)">
+                                {{ t.criado_em | datahora_br }}
+                            </td>
+                            <td>
+                                <span class="tipo-badge {{ t.tipo | lower }}">{{ t.tipo | capitalize }}</span>
+                            </td>
+                            <td>{{ t.descricao }}</td>
+                            <td class="valor {{ 'positivo' if t.valor > 0 else 'negativo' }}">
+                                {{ '+' if t.valor > 0 else '−' }} {{ (t.valor if t.valor > 0 else -t.valor) | brl }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="vazio">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                    <path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/>
+                    <path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/>
+                    <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+                </svg>
+                <div class="vazio-titulo">Sua carteira ainda não tem movimentações</div>
+                <p class="vazio-texto">
+                    Recarregue NexusCoin para pagar suas recargas em um toque
+                    e receber {{ cashback_pct }}% de volta a cada sessão.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+
+// Sincroniza os botões de valor rápido, o campo livre e o rótulo do botão de
+// envio, para que o usuário sempre veja no botão exatamente o que vai acontecer.
+(function () {
+    var campo   = document.getElementById('valor');
+    var rotulo  = document.getElementById('btnValor');
+    var opcoes  = Array.prototype.slice.call(document.querySelectorAll('.valor-opcao'));
+
+    function formatar(txt) {
+        var n = parseFloat(String(txt).replace(/\./g, '').replace(',', '.'));
+        if (isNaN(n)) return null;
+        return n.toLocaleString('pt-BR', { minimumFractionDigits: 2,
+                                           maximumFractionDigits: 2 });
+    }
+
+    function atualizarRotulo() {
+        var fmt = formatar(campo.value);
+        rotulo.textContent = fmt === null ? '—' : fmt;
+    }
+
+    opcoes.forEach(function (b) {
+        b.addEventListener('click', function () {
+            opcoes.forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+            b.setAttribute('aria-pressed', 'true');
+            campo.value = formatar(b.dataset.valor.replace('.', ','));
+            atualizarRotulo();
+        });
+    });
+
+    campo.addEventListener('input', function () {
+        opcoes.forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        atualizarRotulo();
+    });
+
+    // Evita duplo envio em um fluxo que mexe em dinheiro.
+    document.getElementById('formRecarga').addEventListener('submit', function () {
+        document.getElementById('btnRecarregar').classList.add('processando');
+    });
+
+    atualizarRotulo();
+}());
+</script>
+{% endblock %}

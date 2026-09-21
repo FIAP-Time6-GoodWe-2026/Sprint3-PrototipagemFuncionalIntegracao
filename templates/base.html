@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ChargeGrid Intelligence{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+
+    <!--
+        FOUC PREVENTION — executa inline antes de qualquer CSS ser renderizado.
+        Lê a preferência salva e aplica o data-theme na raiz imediatamente,
+        eliminando o flash branco/escuro ao carregar a página.
+    -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('cgi-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
+    <style>
+    /* ====================================================================
+       DESIGN TOKENS — Variáveis CSS (Light mode padrão)
+       ==================================================================== */
+    :root {
+        --cor-primaria:          #C00000;
+        --cor-primaria-dark:     #8B0000;
+        --cor-fundo:             #F3F4F6;
+        --cor-card:              #FFFFFF;
+        --cor-input-bg:          #FFFFFF;
+        --cor-dark-card-1:       #1F2937;
+        --cor-dark-card-2:       #111827;
+        --cor-texto:             #1F2937;
+        --cor-texto-secundario:  #646B79;   /* 4,87:1 sobre o fundo (era 4,39:1, reprovado) */
+        --cor-borda:             #E5E7EB;
+        --cor-input-border:      #E5E7EB;
+        --cor-livre:             #10B981;
+        --cor-livre-dark:        #059669;
+        --cor-ocupado:           #EF4444;
+        --cor-vip:               #F59E0B;
+        --cor-vip-dark:          #D97706;
+        --cor-vip-bg:            #FFFBEB;
+        --cor-aviso:             #F59E0B;
+        --cor-aviso-dark:        #D97706;
+        --cor-aviso-bg:          #FEF3C7;
+        --cor-info:              #2563EB;
+        --cor-info-bg:           #EFF6FF;
+        --cor-mapa-bg:           #E8EEF2;
+        --cor-mapa-bg2:          #D9E3EA;
+        --cor-mapa-water:        #C8DCE6;
+        --cor-mapa-park:         #C8E6C9;
+        --cor-mapa-road:         rgba(255,255,255,0.75);
+        --cor-mapa-road-minor:   rgba(255,255,255,0.40);
+        --cor-table-header:      #F9FAFB;
+        --cor-table-row-pico:    #FFFBEB;
+        --sombra-sm:  0 1px 2px rgba(0,0,0,0.05);
+        --sombra-md:  0 4px 6px rgba(0,0,0,0.10);
+        --sombra-lg:  0 10px 25px rgba(0,0,0,0.15);
+
+        /* ================================================================
+           SPRINT 3 · FASE D1 — FUNDAÇÃO DE DESIGN
+           ================================================================ */
+
+        /* ── Cores com papel de TEXTO ────────────────────────────────────
+           A paleta original usava a mesma variável para superfície e para
+           texto. #C00000 é ótimo como fundo de botão (branco sobre ele dá
+           6,48:1) e reprovado como cor de link sobre o card escuro do dark
+           mode (2,26:1). Estas variáveis existem só para texto e ícones,
+           e todas passam WCAG AA (≥4,5:1) no tema em que são definidas.   */
+        --cor-primaria-texto:    #C00000;   /* 6,48:1 sobre branco          */
+        --cor-info-texto:        #2563EB;   /* 5,17:1                       */
+        --cor-livre-texto:       #047857;   /* 5,48:1                       */
+        --cor-vip-texto:         #B45309;   /* 5,02:1                       */
+        --cor-ocupado-texto:     #B91C1C;   /* 6,47:1                       */
+
+        /* Segunda camada neutra: barras, painéis e cabeçalhos de tabela.  */
+        --cor-superficie-2:      #F9FAFB;
+
+        /* ── Tipografia — escala fixa, razão ≈1,125.
+           Produto não usa tipografia fluida: o usuário lê em DPI constante
+           e um título que encolhe dentro de um painel fica pior.          */
+        --fs-2xs: 0.6875rem;   /* 11px — unidades, badges, rótulos de eixo */
+        --fs-xs:  0.75rem;     /* 12px — legendas, labels de formulário    */
+        --fs-sm:  0.8125rem;   /* 13px — texto secundário, tabelas densas  */
+        --fs-md:  0.9375rem;   /* 15px — corpo padrão                      */
+        --fs-lg:  1.0625rem;   /* 17px — título de card                    */
+        --fs-xl:  1.25rem;     /* 20px — título de seção                   */
+        --fs-2xl: 1.75rem;     /* 28px — título de página                  */
+        --fs-3xl: 2.5rem;      /* 40px — número-herói: saldo, kW, total    */
+
+        --lh-tight:  1.2;
+        --lh-normal: 1.5;
+
+        --fw-regular:  400;
+        --fw-medium:   500;
+        --fw-semibold: 600;
+        --fw-bold:     700;
+
+        /* ── Espaçamento — base 4px                                       */
+        --sp-1:  4px;  --sp-2:  8px;  --sp-3: 12px;  --sp-4: 16px;
+        --sp-5: 24px;  --sp-6: 32px;  --sp-7: 48px;  --sp-8: 64px;
+
+        /* ── Raio                                                         */
+        --r-sm:  6px;  --r-md: 10px;  --r-lg: 16px;  --r-pill: 999px;
+
+        /* ── Movimento — curto, porque o usuário está em fluxo            */
+        --t-fast: 120ms;  --t-base: 180ms;  --t-slow: 260ms;
+        --ease: cubic-bezier(0.2, 0, 0, 1);
+
+        /* ── Trilhos de conteúdo ─────────────────────────────────────────
+           O app tinha seis larguras máximas diferentes (1400, 1200, 1100,
+           1000...), e o cabeçalho nunca batia com o corpo: em 2560px o título
+           começava 124px à esquerda dos cards abaixo dele. Nada alinhava.
+
+           Agora são três trilhos, cada um com um motivo, e o cabeçalho usa
+           sempre o mesmo da página em que está. A referência vem dos
+           concorrentes medidos em 2560px: GreenV contém em 1140px,
+           NeoCharge em 1200–1280px, Intelbras em 1230px com faixas de 1600px.
+           Nenhum deles espalha o conteúdo até a borda.                     */
+        --rail-leitura:  1040px;  /* log e console: linha curta para ler     */
+        --rail:          1280px;  /* telas de tarefa — o padrão              */
+        --rail-painel:   1560px;  /* painéis densos: tabelas e grades largas */
+
+        /* ── Foco: dois anéis para funcionar sobre qualquer fundo         */
+        --focus-ring: 0 0 0 2px var(--cor-card), 0 0 0 4px var(--cor-primaria);
+
+        /* ── Marca NexusCharge (sprite #marca-nexus)                      */
+        --marca-vermelho: #C00000;
+        --marca-verde:    #0E9E6E;   /* 3,4:1 sobre branco — só como traço  */
+        --marca-escuro:   #12060A;
+    }
+
+    /* ====================================================================
+       DARK MODE — Sobreposição completa de tokens
+       ==================================================================== */
+    [data-theme="dark"] {
+        --cor-fundo:             #0F172A;
+        --cor-card:              #1E293B;
+        --cor-input-bg:          #1E293B;
+        --cor-dark-card-1:       #020617;
+        --cor-dark-card-2:       #000308;
+        --cor-texto:             #F1F5F9;
+        --cor-texto-secundario:  #94A3B8;
+        --cor-borda:             #334155;
+        --cor-input-border:      #475569;
+        --cor-livre:             #34D399;
+        --cor-livre-dark:        #10B981;
+        --cor-vip-bg:            rgba(245,158,11,0.12);
+        --cor-aviso-bg:          rgba(245,158,11,0.12);
+        --cor-info-bg:           rgba(37,99,235,0.12);
+        --cor-mapa-bg:           #0D1B2A;
+        --cor-mapa-bg2:          #060E17;
+        --cor-mapa-water:        #1A3352;
+        --cor-mapa-park:         #0E2419;
+        --cor-mapa-road:         rgba(255,255,255,0.07);
+        --cor-mapa-road-minor:   rgba(255,255,255,0.03);
+        --cor-table-header:      #162032;
+        --cor-table-row-pico:    rgba(245,158,11,0.08);
+        --sombra-sm:  0 1px 2px rgba(0,0,0,0.40);
+        --sombra-md:  0 4px 6px rgba(0,0,0,0.50);
+        --sombra-lg:  0 10px 25px rgba(0,0,0,0.65);
+        color-scheme: dark;
+
+        /* FASE D1 — cores de texto reajustadas para o fundo escuro.
+           Contrastes medidos sobre o card (#1E293B), o pior caso.         */
+        --cor-primaria-texto:  #FF6B6B;   /* 5,27:1  (era 2,26:1 com #C00000) */
+        --cor-info-texto:      #60A5FA;   /* 5,75:1  (era 2,83:1)             */
+        --cor-livre-texto:     #34D399;   /* 7,61:1                           */
+        --cor-vip-texto:       #FBBF24;   /* 6,81:1                           */
+        --cor-ocupado-texto:   #F87171;   /* 5,29:1                           */
+        --cor-superficie-2:    #162032;
+
+        /* A marca no tema escuro é o logotipo original: vermelho e verde
+           mais luminosos, raio quase preto sobre o disco.                  */
+        --marca-vermelho: #E11414;
+        --marca-verde:    #11B882;
+        --marca-escuro:   #0D1017;
+    }
+
+    /* ====================================================================
+       RESET
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* As transições de tema são ativadas via .theme-ready (adicionada por JS
+       após a primeira renderização) para evitar flash na carga inicial. */
+    body.theme-ready * {
+        transition:
+            background-color 0.28s ease,
+            border-color     0.28s ease,
+            color            0.18s ease,
+            box-shadow       0.28s ease;
+    }
+
+    /* Não animar transforms ou animations existentes durante troca de tema */
+    body.theme-ready .ripple-wave,
+    body.theme-ready .pin,
+    body.theme-ready .btn-spinner,
+    body.theme-ready .skeleton-shimmer {
+        transition: none;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--cor-fundo);
+        color: var(--cor-texto);
+        font-size: var(--fs-md);
+        line-height: var(--lh-normal);
+        min-height: 100vh;
+        animation: pageEnter 0.32s ease both;
+    }
+
+    @keyframes pageEnter {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ====================================================================
+       FASE D1 — REGRAS GLOBAIS DE ACESSIBILIDADE E LEGIBILIDADE
+       ==================================================================== */
+
+    /* Foco por teclado visível em todo elemento interativo. O projeto não
+       tinha nenhuma regra :focus-visible — navegar por Tab era invisível. */
+    :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+        border-radius: var(--r-sm);
+    }
+
+    /* Números que mudam (polling do dashboard, countdown, saldo) ou que
+       aparecem em coluna precisam de dígitos de largura fixa — senão a
+       tabela "dança" a cada atualização. */
+    .num,
+    td.num,
+    .kpi-valor,
+    .saldo-valor,
+    .total-valor,
+    .countdown-valor,
+    .stat-value,
+    .power-value {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1;
+    }
+
+    /* Alvos de toque com 44px de altura efetiva no mobile. */
+    .btn, .header-btn, .theme-toggle, .perfil-trigger, .perfil-item {
+        min-height: 44px;
+    }
+
+    /* Respeita a preferência de sistema por menos movimento. O projeto tinha
+       52 transições e nenhuma regra de redução. */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+        body { animation: none; }
+    }
+
+    /* ====================================================================
+       HEADER COMPARTILHADO
+       ==================================================================== */
+    .header {
+        background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+        color: white;
+        padding: 20px 24px;
+        box-shadow: var(--sombra-md);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .header-content {
+        /* Mesmo trilho do corpo: é isto que faz o título alinhar com o
+           conteúdo abaixo dele em qualquer largura de tela. */
+        max-width: var(--rail);
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .brand-icon {
+        width: 36px;
+        height: 36px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        transition: background 0.2s, transform 0.2s;
+        text-decoration: none;
+    }
+
+    .brand-icon:hover { background: rgba(255,255,255,0.28); transform: scale(1.06); }
+
+    .brand-icon svg {
+        width: 22px;
+        height: 22px;
+        stroke: white;
+    }
+
+    /* Micro-interação: raio pisca ao hover */
+    .brand-icon:hover svg { animation: boltFlash 0.45s ease; }
+
+    @keyframes boltFlash {
+        0%   { transform: scale(1)    rotate(0deg);   filter: brightness(1);   }
+        35%  { transform: scale(1.35) rotate(-8deg);  filter: brightness(1.8); }
+        65%  { transform: scale(0.92) rotate(4deg);   filter: brightness(1.2); }
+        100% { transform: scale(1)    rotate(0deg);   filter: brightness(1);   }
+    }
+
+    .header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    .header-subtitle { font-size: 0.8rem; opacity: 0.9; }
+    .header-info { flex: 1; min-width: 0; }
+
+    .header-address {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .header-address svg { width: 14px; height: 14px; stroke: white; flex-shrink: 0; }
+
+    .back-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        transition: background 0.2s, transform 0.2s;
+        flex-shrink: 0;
+    }
+
+    .back-button:hover { background: rgba(255,255,255,0.28); transform: translateX(-2px); }
+    .back-button svg { width: 20px; height: 20px; stroke: white; }
+
+    /* Micro-interação: seta do back desliza */
+    .back-button:hover svg { transition: transform 0.18s ease; transform: translateX(-2px); }
+
+    /* ====================================================================
+       DARK MODE TOGGLE
+       ==================================================================== */
+    /* Botões de navegação no cabeçalho (Dashboard, Testes, etc.) */
+    .header-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 600;
+        transition: background 0.18s, transform 0.14s, box-shadow 0.18s;
+    }
+    .header-btn:hover {
+        background: rgba(255,255,255,0.28);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+    }
+    .header-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .header-btn svg { width: 14px; height: 14px; stroke: white; fill: none; }
+
+    .theme-toggle {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: background 0.2s, transform 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .theme-toggle:hover { background: rgba(255,255,255,0.28); transform: scale(1.06); }
+
+    .theme-toggle svg {
+        width: 18px;
+        height: 18px;
+        stroke: white;
+        stroke-width: 2;
+        fill: none;
+        position: absolute;
+        transition:
+            transform 0.38s var(--ease),
+            opacity   0.22s ease;
+    }
+
+    /* Sol: visível no dark mode */
+    .icon-sun  { opacity: 0; transform: rotate(80deg) scale(0.4); }
+    [data-theme="dark"] .icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-theme="dark"] .theme-toggle:hover .icon-sun  { transform: rotate(22deg) scale(1.12); }
+
+    /* Lua: visível no light mode */
+    .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-theme="dark"] .icon-moon { opacity: 0; transform: rotate(-80deg) scale(0.4); }
+    .theme-toggle:hover .icon-moon { transform: rotate(-18deg) scale(1.12); }
+
+    /* ====================================================================
+       SISTEMA DE TOAST NOTIFICATIONS
+       ==================================================================== */
+    .toast-container {
+        position: fixed;
+        top: 0;           /* valor real definido por JS após medir o header */
+        right: 24px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(380px, calc(100vw - 48px));
+        pointer-events: none;
+    }
+
+    .toast {
+        background: var(--cor-card);
+        color: var(--cor-texto);
+        border-radius: 12px;
+        padding: 14px 16px 16px;
+        box-shadow: var(--sombra-lg);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--cor-borda);
+        pointer-events: all;
+        animation: toastIn 0.38s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+    }
+
+    .toast.toast-exit { animation: toastOut 0.26s ease forwards; }
+
+    @keyframes toastIn  {
+        from { transform: translateX(115%) scale(0.94); opacity: 0; }
+        to   { transform: translateX(0)     scale(1);    opacity: 1; }
+    }
+    @keyframes toastOut {
+        from { transform: translateX(0)     scale(1);    opacity: 1; max-height: 200px; }
+        to   { transform: translateX(115%)  scale(0.94); opacity: 0; max-height: 0; }
+    }
+
+    /* O tipo já é dito pelo ícone e pela barra de progresso; a borda inteira
+       tingida basta e evita a tarja lateral grossa. */
+    .toast-error   { border-color: var(--cor-ocupado); }
+    .toast-success { border-color: var(--cor-livre); }
+    .toast-warning { border-color: var(--cor-aviso); }
+    .toast-info    { border-color: var(--cor-info); }
+
+    .toast-icon {
+        width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
+        fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .toast-error   .toast-icon { stroke: var(--cor-ocupado-texto); }
+    .toast-success .toast-icon { stroke: var(--cor-livre-texto); }
+    .toast-warning .toast-icon { stroke: var(--cor-vip-texto); }
+    .toast-info    .toast-icon { stroke: var(--cor-info-texto); }
+
+    .toast-body { flex: 1; min-width: 0; }
+
+    .toast-close {
+        width: 22px; height: 22px; border: none; background: none;
+        cursor: pointer; border-radius: 4px; display: flex; align-items: center;
+        justify-content: center; flex-shrink: 0; padding: 0;
+        color: var(--cor-texto-secundario);
+        transition: color 0.15s, background 0.15s;
+    }
+    .toast-close:hover { background: var(--cor-fundo); color: var(--cor-texto); }
+    .toast-close svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.5; fill: none; }
+
+    .toast-progress {
+        position: absolute; bottom: 0; left: 0; height: 3px;
+        border-radius: 0 0 0 8px;
+        animation: toastProgress linear forwards;
+    }
+    .toast-error   .toast-progress { background: var(--cor-ocupado); }
+    .toast-success .toast-progress { background: var(--cor-livre); }
+    .toast-warning .toast-progress { background: var(--cor-aviso); }
+    .toast-info    .toast-progress { background: var(--cor-info); }
+
+    @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+
+    /* Barra de progresso de navegação entre páginas */
+    #cgi-nav-bar {
+        position: fixed; top: 0; left: 0; height: 3px; width: 100%; z-index: 10000;
+        background: var(--cor-primaria);
+        border-radius: 0 2px 2px 0;
+        /* scaleX em vez de width: a barra roda no compositor, sem reflow a
+           cada quadro justo enquanto a próxima página está carregando. */
+        transform: scaleX(0); transform-origin: left center;
+        transition: transform var(--t-slow) var(--ease), opacity var(--t-base) var(--ease);
+        pointer-events: none;
+    }
+
+    /* ====================================================================
+       SKELETON SCREENS
+       ==================================================================== */
+    .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            var(--cor-borda) 0%,
+            var(--cor-card)  50%,
+            var(--cor-borda) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmerAnim 1.5s ease infinite;
+        border-radius: 6px;
+    }
+
+    /* Skeleton sobre superficie escura (cost-preview) */
+    .skeleton-on-dark {
+        background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0.06) 0%,
+            rgba(255,255,255,0.15) 50%,
+            rgba(255,255,255,0.06) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmerAnim 1.5s ease infinite;
+        border-radius: 6px;
+    }
+
+    @keyframes shimmerAnim {
+        0%   { background-position: 200% center; }
+        100% { background-position: -200% center; }
+    }
+
+    /* ====================================================================
+       RIPPLE EFFECT
+       ==================================================================== */
+    .btn-action, .btn-submit, .btn, .back-button,
+    .theme-toggle, .btn-primary, .btn-secondary, .station-card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ripple-wave {
+        position: absolute;
+        width: 0; height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.32);
+        transform: translate(-50%, -50%);
+        animation: rippleExpand 0.65s ease-out forwards;
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    .station-card .ripple-wave  { background: rgba(192,0,0,0.07); }
+    .charger-card .ripple-wave  { background: rgba(16,185,129,0.10); }
+    .charger-card.vip .ripple-wave { background: rgba(245,158,11,0.12); }
+
+    @keyframes rippleExpand { to { width: 650px; height: 650px; opacity: 0; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ====================================================================
+       CARD TILT
+       ==================================================================== */
+    .tilt-enabled { transform-style: preserve-3d; will-change: transform; }
+
+    /* ====================================================================
+       MICRO-INTERAÇÕES — Ícones
+       ==================================================================== */
+    .station-card .station-address svg {
+        transition: transform var(--t-base) var(--ease);
+    }
+    .station-card:not(.indisponivel):hover .station-address svg {
+        transform: translateY(-3px);
+    }
+
+    .charger-card.livre:hover .charger-icon-box svg,
+    .charger-card.vip:hover   .charger-icon-box svg {
+        animation: boltPulse 0.48s ease;
+    }
+    @keyframes boltPulse {
+        0%  { transform: scale(1)    rotate(0deg);  filter: brightness(1);   }
+        30% { transform: scale(1.4)  rotate(-10deg);filter: brightness(2);   }
+        65% { transform: scale(0.88) rotate(4deg);  filter: brightness(1.2); }
+        100%{ transform: scale(1)    rotate(0deg);  filter: brightness(1);   }
+    }
+
+    .stat-icon svg { transition: transform 0.2s var(--ease); }
+    .stat-item:hover .stat-icon svg { transform: scale(1.2); }
+
+    /* ====================================================================
+       SPINNER
+       ==================================================================== */
+    .btn-spinner {
+        display: inline-block; width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white; border-radius: 50%;
+        animation: spinAnim 0.72s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spinAnim { to { transform: rotate(360deg); } }
+
+    @keyframes cardEnter {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ====================================================================
+       RESPONSIVO
+       ==================================================================== */
+    @media (max-width: 640px) {
+        .toast-container { top: 80px !important; right: 16px; width: calc(100vw - 32px); }
+    }
+
+    /* Texto só para leitores de tela */
+    .sr-only {
+        position: absolute; width: 1px; height: 1px;
+        padding: 0; margin: -1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    /* ====================================================================
+       SPRINT 3 — COMPONENTES COMPARTILHADOS
+       Definidos aqui uma única vez e usados por login, carteira, pagamento,
+       recibo e painel. Antes cada tela reescrevia o seu próprio card.
+       ==================================================================== */
+
+    .container {
+        max-width: var(--rail);
+        margin: 0 auto;
+        padding: var(--sp-5) var(--sp-4) var(--sp-7);
+    }
+    .container.estreito { max-width: 760px; }
+
+    /* A página declara o seu trilho redefinindo o token; cabeçalho, corpo e
+       qualquer componente que use var(--rail) acompanham de uma vez só. */
+    body.painel  { --rail: var(--rail-painel);  }
+    body.leitura { --rail: var(--rail-leitura); }
+
+    .card {
+        background: var(--cor-card);
+        border: 1px solid var(--cor-borda);
+        border-radius: var(--r-lg);
+        box-shadow: var(--sombra-sm);
+        padding: var(--sp-5);
+    }
+
+    .card-titulo {
+        font-size: var(--fs-lg);
+        font-weight: var(--fw-semibold);
+        line-height: var(--lh-tight);
+        margin-bottom: var(--sp-1);
+    }
+    .card-sub {
+        font-size: var(--fs-sm);
+        color: var(--cor-texto-secundario);
+        margin-bottom: var(--sp-4);
+    }
+
+    .secao-titulo {
+        font-size: var(--fs-xl);
+        font-weight: var(--fw-bold);
+        line-height: var(--lh-tight);
+        margin-bottom: var(--sp-4);
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+    }
+
+    /* Rótulo pequeno em caixa alta, usado acima de números-herói */
+    .rotulo {
+        font-size: var(--fs-2xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--cor-texto-secundario);
+    }
+
+    /* Número-herói: o valor mais importante da tela */
+    .heroi {
+        font-size: var(--fs-3xl);
+        font-weight: var(--fw-bold);
+        line-height: var(--lh-tight);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
+    }
+    .heroi .unidade {
+        font-size: var(--fs-lg);
+        font-weight: var(--fw-semibold);
+        color: var(--cor-texto-secundario);
+        margin-left: var(--sp-1);
+    }
+
+    /* ── Marca NexusCharge ─────────────────────────────────────────────── */
+    .marca { display: block; }
+    .marca-sm { width: 28px; height: 28px; }
+    .marca-md { width: 44px; height: 44px; }
+    .marca-lg { width: 96px; height: 96px; }
+
+    /* ── Símbolo da moeda NexusCoin ───────────────────────────────────── */
+    .nc-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sp-2);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--fw-semibold);
+    }
+    .nc-simbolo {
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+    }
+
+    /* ── Estados vazios que ensinam ───────────────────────────────────── */
+    .vazio {
+        text-align: center;
+        padding: var(--sp-7) var(--sp-4);
+        color: var(--cor-texto-secundario);
+    }
+    .vazio svg {
+        width: 40px; height: 40px;
+        stroke: var(--cor-texto-secundario);
+        fill: none; stroke-width: 1.5;
+        opacity: 0.55;
+        margin: 0 auto var(--sp-3);
+        display: block;
+    }
+    .vazio-titulo {
+        font-size: var(--fs-md);
+        font-weight: var(--fw-semibold);
+        color: var(--cor-texto);
+        margin-bottom: var(--sp-1);
+    }
+    .vazio-texto {
+        font-size: var(--fs-sm);
+        max-width: 42ch;
+        margin: 0 auto var(--sp-4);
+        line-height: var(--lh-normal);
+    }
+
+    /* ── Controles de formulário ──────────────────────────────────────── */
+    .campo { margin-bottom: var(--sp-4); }
+    .campo label {
+        display: block;
+        font-size: var(--fs-xs);
+        font-weight: var(--fw-semibold);
+        color: var(--cor-texto-secundario);
+        margin-bottom: var(--sp-2);
+    }
+    .campo input[type="text"],
+    .campo input[type="password"],
+    .campo input[type="number"],
+    .campo select {
+        width: 100%;
+        padding: var(--sp-3);
+        font-size: var(--fs-md);
+        font-family: inherit;
+        color: var(--cor-texto);
+        background: var(--cor-input-bg);
+        border: 1px solid var(--cor-input-border);
+        border-radius: var(--r-md);
+        transition: border-color var(--t-base) var(--ease);
+        min-height: 44px;
+    }
+    .campo input:hover, .campo select:hover { border-color: var(--cor-texto-secundario); }
+    .campo input:disabled, .campo select:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        background: var(--cor-superficie-2);
+    }
+    .campo .ajuda {
+        font-size: var(--fs-xs);
+        color: var(--cor-texto-secundario);
+        margin-top: var(--sp-2);
+    }
+
+    /* ── Botão largo padrão das telas novas ───────────────────────────── */
+    .btn-bloco {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--sp-2);
+        width: 100%;
+        padding: var(--sp-3) var(--sp-4);
+        min-height: 48px;
+        font-family: inherit;
+        font-size: var(--fs-md);
+        font-weight: var(--fw-semibold);
+        border: 1px solid transparent;
+        border-radius: var(--r-md);
+        cursor: pointer;
+        text-decoration: none;
+        transition: background var(--t-base) var(--ease),
+                    border-color var(--t-base) var(--ease),
+                    opacity var(--t-base) var(--ease);
+    }
+    .btn-bloco svg { width: 18px; height: 18px; stroke-width: 2; }
+
+    .btn-bloco.primario {
+        background: var(--cor-primaria);
+        color: #FFFFFF;
+    }
+    .btn-bloco.primario:hover:not(:disabled) { background: var(--cor-primaria-dark); }
+
+    .btn-bloco.neutro {
+        background: var(--cor-card);
+        color: var(--cor-texto);
+        border-color: var(--cor-borda);
+    }
+    .btn-bloco.neutro:hover:not(:disabled) { border-color: var(--cor-texto-secundario); }
+
+    .btn-bloco:disabled,
+    .btn-bloco[aria-disabled="true"] {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Estado de processamento: impede o duplo clique em fluxos de dinheiro */
+    .btn-bloco.processando { pointer-events: none; opacity: 0.72; }
+    .btn-bloco.processando .rotulo-btn::after {
+        content: "";
+        display: inline-block;
+        width: 14px; height: 14px;
+        margin-left: var(--sp-2);
+        vertical-align: -2px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: girar 700ms linear infinite;
+    }
+    @keyframes girar { to { transform: rotate(360deg); } }
+
+    /* ── Tabelas de dados ─────────────────────────────────────────────── */
+    .tabela { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+    .tabela th {
+        text-align: left;
+        padding: var(--sp-3);
+        background: var(--cor-superficie-2);
+        color: var(--cor-texto-secundario);
+        font-size: var(--fs-2xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--cor-borda);
+        white-space: nowrap;
+    }
+    .tabela td {
+        padding: var(--sp-3);
+        border-bottom: 1px solid var(--cor-borda);
+        vertical-align: middle;
+    }
+    .tabela tr:last-child td { border-bottom: none; }
+    .tabela td.valor { text-align: right; font-variant-numeric: tabular-nums; }
+    .tabela-scroll { overflow-x: auto; }
+
+    .positivo { color: var(--cor-livre-texto); font-weight: var(--fw-semibold); }
+    .negativo { color: var(--cor-texto); font-weight: var(--fw-semibold); }
+
+    /* ── Menu de perfil ───────────────────────────────────────────────── */
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-2);
+    }
+
+    .perfil-wrapper { position: relative; }
+
+    .perfil-trigger {
+        width: 40px; height: 40px;
+        min-height: 40px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: var(--r-pill);
+        cursor: pointer;
+        color: #FFFFFF;
+        transition: background var(--t-base) var(--ease);
+    }
+    .perfil-trigger:hover { background: rgba(255,255,255,0.28); }
+    .perfil-trigger svg { width: 20px; height: 20px; stroke: currentColor;
+                          fill: none; stroke-width: 2; }
+
+    .perfil-menu {
+        position: absolute;
+        top: calc(100% + var(--sp-2));
+        right: 0;
+        width: 280px;
+        background: var(--cor-card);
+        color: var(--cor-texto);
+        border: 1px solid var(--cor-borda);
+        border-radius: var(--r-lg);
+        box-shadow: var(--sombra-lg);
+        overflow: hidden;
+        z-index: 200;
+    }
+    .perfil-menu[hidden] { display: none; }
+
+    .perfil-cabecalho {
+        display: flex; align-items: center; gap: var(--sp-3);
+        padding: var(--sp-4);
+        border-bottom: 1px solid var(--cor-borda);
+    }
+    .perfil-avatar {
+        width: 44px; height: 44px; flex: 0 0 44px;
+        border-radius: var(--r-pill);
+        background: var(--cor-superficie-2);
+        border: 1px solid var(--cor-borda);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .perfil-avatar svg {
+        width: 22px; height: 22px;
+        stroke: var(--cor-texto-secundario); fill: none; stroke-width: 1.8;
+    }
+    .perfil-nome {
+        font-size: var(--fs-md); font-weight: var(--fw-semibold);
+        line-height: var(--lh-tight);
+    }
+    .perfil-tipo { font-size: var(--fs-xs); color: var(--cor-texto-secundario); }
+
+    .perfil-saldo {
+        display: flex; align-items: center; gap: var(--sp-3);
+        padding: var(--sp-4);
+        text-decoration: none;
+        color: inherit;
+        border-bottom: 1px solid var(--cor-borda);
+        transition: background var(--t-base) var(--ease);
+    }
+    .perfil-saldo:hover { background: var(--cor-superficie-2); }
+    .perfil-saldo .valor {
+        font-size: var(--fs-xl);
+        font-weight: var(--fw-bold);
+        font-variant-numeric: tabular-nums;
+        line-height: var(--lh-tight);
+    }
+    .perfil-saldo .moeda { font-size: var(--fs-2xs); color: var(--cor-texto-secundario); }
+    .perfil-saldo.baixo .valor { color: var(--cor-vip-texto); }
+
+    .perfil-item {
+        display: flex; align-items: center; gap: var(--sp-3);
+        padding: var(--sp-3) var(--sp-4);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-medium);
+        color: var(--cor-texto);
+        text-decoration: none;
+        border: none; background: none; width: 100%;
+        cursor: pointer; font-family: inherit; text-align: left;
+        transition: background var(--t-base) var(--ease);
+    }
+    .perfil-item:hover { background: var(--cor-superficie-2); }
+    .perfil-item svg {
+        width: 16px; height: 16px; flex: 0 0 16px;
+        stroke: var(--cor-texto-secundario); fill: none; stroke-width: 2;
+    }
+    .perfil-item.destaque { color: var(--cor-primaria-texto); font-weight: var(--fw-semibold); }
+    .perfil-item.destaque svg { stroke: var(--cor-primaria-texto); }
+    .perfil-item.sair { border-top: 1px solid var(--cor-borda); }
+
+    .perfil-reserva {
+        display: flex; align-items: center; gap: var(--sp-2);
+        padding: var(--sp-3) var(--sp-4);
+        background: var(--cor-info-bg);
+        font-size: var(--fs-xs);
+        color: var(--cor-info-texto);
+        font-weight: var(--fw-semibold);
+        text-decoration: none;
+        border-bottom: 1px solid var(--cor-borda);
+    }
+
+    /* Faixa de cobrança pendente — recarga encerrada e não paga (#B41). */
+    .faixa-pendencia {
+        background: var(--cor-aviso-bg);
+        border-bottom: 1px solid var(--cor-aviso);
+    }
+    .faixa-pendencia-conteudo {
+        max-width: var(--rail);
+        margin: 0 auto;
+        padding: var(--sp-3) var(--sp-4);
+        display: flex; align-items: center; gap: var(--sp-3);
+        flex-wrap: wrap;
+        font-size: var(--fs-sm);
+        color: var(--cor-vip-texto);
+    }
+    .faixa-pendencia svg {
+        width: 18px; height: 18px; flex: 0 0 18px;
+        stroke: var(--cor-vip-texto); fill: none; stroke-width: 2;
+    }
+    .faixa-pendencia strong { font-variant-numeric: tabular-nums; }
+    .faixa-pendencia a {
+        margin-left: auto;
+        color: var(--cor-vip-texto);
+        font-weight: var(--fw-semibold);
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    @media (max-width: 640px) {
+        .faixa-pendencia-conteudo { padding: var(--sp-3); }
+        .faixa-pendencia a { margin-left: 0; }
+        .container { padding: var(--sp-4) var(--sp-3) var(--sp-6); }
+        .card { padding: var(--sp-4); }
+        .heroi { font-size: 2rem; }
+        .perfil-menu { width: min(300px, calc(100vw - var(--sp-6))); }
+        .header-actions .header-btn span { display: none; }
+    }
+
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% block corpo_classe %}{% endblock %}">
+
+    {# ==================================================================
+       SPRITE SVG — marca NexusCharge, definida uma vez e reusada com <use>.
+
+       Redesenhada em vetor a partir do logotipo do time: o arquivo original
+       é um JPG com fundo escuro embutido, que viraria um retângulo preto
+       sobre o tema claro e ficaria ilegível a 20px no menu de perfil.
+       O vetor herda a cor do tema e serve tanto de logo quanto de símbolo
+       da moeda NexusCoin.
+
+       Uso:  <svg class="marca"><use href="#marca-nexus"/></svg>
+       ================================================================== #}
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <symbol id="marca-nexus" viewBox="0 0 100 100">
+            <!-- anel externo + nós da malha -->
+            <circle cx="50" cy="50" r="44" fill="none"
+                    stroke="var(--marca-vermelho, #C00000)" stroke-width="1.6"/>
+            <g fill="var(--marca-vermelho, #C00000)">
+                <circle cx="50" cy="6"  r="2.6"/><circle cx="50" cy="94" r="2.6"/>
+                <circle cx="6"  cy="50" r="2.6"/><circle cx="94" cy="50" r="2.6"/>
+                <circle cx="19" cy="19" r="2"/>  <circle cx="81" cy="19" r="2"/>
+                <circle cx="19" cy="81" r="2"/>  <circle cx="81" cy="81" r="2"/>
+            </g>
+            <!-- órbita de telemetria -->
+            <circle cx="50" cy="50" r="35" fill="none"
+                    stroke="var(--marca-verde, #11B882)" stroke-width="1.2"
+                    opacity="0.85"/>
+            <line x1="50" y1="6" x2="50" y2="94"
+                  stroke="var(--marca-verde, #11B882)" stroke-width="1" opacity="0.5"/>
+            <line x1="6" y1="50" x2="94" y2="50"
+                  stroke="var(--marca-vermelho, #C00000)" stroke-width="1" opacity="0.5"/>
+            <!-- nó ativo na órbita -->
+            <circle cx="74.7" cy="25.3" r="5.4" fill="none"
+                    stroke="var(--marca-verde, #11B882)" stroke-width="1.2"/>
+            <circle cx="74.7" cy="25.3" r="3.4" fill="var(--marca-verde, #11B882)"/>
+            <!-- disco e raio -->
+            <circle cx="50" cy="50" r="22" fill="var(--marca-vermelho, #C00000)"/>
+            <path d="M54.5 32 L41 52.5 h7.5 L45.5 68 L59 47.5 h-7.5 z"
+                  fill="var(--marca-escuro, #12060A)"/>
+        </symbol>
+
+        {# Versão compacta: só o disco e o raio. Os anéis orbitais somem abaixo
+           de ~28px e viram ruído; este símbolo é o da moeda NexusCoin. #}
+        <symbol id="moeda-nexus" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="46" fill="var(--marca-vermelho, #C00000)"/>
+            <circle cx="50" cy="50" r="46" fill="none"
+                    stroke="var(--marca-verde, #11B882)" stroke-width="4"/>
+            <path d="M59 22 L34 56 h13 L41 78 L66 44 h-13 z"
+                  fill="var(--marca-escuro, #12060A)"/>
+        </symbol>
+    </svg>
+
+    {# Bridge Flask flash → JS Toast (server-side data, client-side presentation) #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="cgi-flash-bridge" hidden aria-hidden="true">
+            {% for category, message in messages %}
+            <span data-type="{{ category }}" data-msg="{{ message | e }}"></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block header %}{% endblock %}
+
+    {% if pendencia and request.endpoint not in ('pagamento', 'pagamento_confirmar') %}
+    <div class="faixa-pendencia">
+        <div class="faixa-pendencia-conteudo">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>
+                Recarga no {{ pendencia.charger_id }} encerrada sem pagamento —
+                <strong>R$ {{ pendencia.total_cost_brl | brl }}</strong>.
+                O conector fica ocupado até você pagar.
+            </span>
+            <a href="{{ url_for('pagamento', session_id=pendencia.session_id) }}">Pagar agora</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- toastContainer é movido para <body> via JS para escapar de qualquer stacking context -->
+
+    {% block content %}{% endblock %}
+
+    <script>
+    'use strict';
+
+    // ==================================================================
+    // ThemeManager — Dark mode com persistência
+    // ==================================================================
+    // ==================================================================
+    // PerfilMenu — dropdown do avatar no cabeçalho (Sprint 3)
+    // ==================================================================
+    const PerfilMenu = (function () {
+        let gatilho = null;
+        let menu = null;
+
+        function aberto() { return menu && !menu.hidden; }
+
+        function abrir() {
+            menu.hidden = false;
+            gatilho.setAttribute('aria-expanded', 'true');
+        }
+
+        function fechar(devolverFoco) {
+            if (!menu || menu.hidden) return;
+            menu.hidden = true;
+            gatilho.setAttribute('aria-expanded', 'false');
+            if (devolverFoco) gatilho.focus();
+        }
+
+        function init() {
+            gatilho = document.getElementById('perfilTrigger');
+            menu = document.getElementById('perfilMenu');
+            if (!gatilho || !menu) return;
+
+            gatilho.addEventListener('click', function (e) {
+                e.stopPropagation();
+                aberto() ? fechar(false) : abrir();
+            });
+
+            // Clique fora fecha
+            document.addEventListener('click', function (e) {
+                if (aberto() && !menu.contains(e.target) && e.target !== gatilho) {
+                    fechar(false);
+                }
+            });
+
+            // Esc fecha e devolve o foco ao gatilho
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && aberto()) fechar(true);
+            });
+
+            // Tab para fora do menu fecha
+            menu.addEventListener('focusout', function (e) {
+                if (aberto() && !menu.contains(e.relatedTarget) &&
+                    e.relatedTarget !== gatilho) {
+                    fechar(false);
+                }
+            });
+        }
+        return { init };
+    }());
+
+    const ThemeManager = (function () {
+        const KEY = 'cgi-theme';
+        function getTheme()   { return localStorage.getItem(KEY) || 'light'; }
+        function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); }
+        function toggle()     { const n = getTheme() === 'dark' ? 'light' : 'dark'; localStorage.setItem(KEY, n); applyTheme(n); }
+
+        function init() {
+            applyTheme(getTheme());
+            // Habilita transições somente após o primeiro frame renderizado
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                document.body.classList.add('theme-ready');
+            }));
+            document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggle));
+        }
+        return { init, getTheme };
+    }());
+
+    // ==================================================================
+    // ToastSystem — Notificações fixas (container appendado ao <body>
+    //               para escapar de qualquer stacking context)
+    // ==================================================================
+    const ToastSystem = (function () {
+        const DEFAULT_DURATION = 5500;
+        const ICONS = {
+            error:   '<svg class="toast-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            success: '<svg class="toast-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            warning: '<svg class="toast-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            info:    '<svg class="toast-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        };
+
+        function getContainer() {
+            var c = document.getElementById('toastContainer');
+            if (c) return c;
+            c = document.createElement('div');
+            c.id = 'toastContainer';
+            c.className = 'toast-container';
+            c.setAttribute('role', 'region');
+            c.setAttribute('aria-label', 'Notificações');
+            c.setAttribute('aria-live', 'polite');
+            // Último filho do body — fora de qualquer contexto de transformação
+            document.body.appendChild(c);
+
+            // top dinâmico: cola logo abaixo do header real (não hardcoded)
+            function ajustarTop() {
+                var h = document.querySelector('.header');
+                c.style.top = ((h ? h.offsetHeight : 0) + 8) + 'px';
+            }
+            ajustarTop();
+            window.addEventListener('resize', ajustarTop);
+
+            return c;
+        }
+
+        function show(message, type, duration) {
+            type     = type     || 'info';
+            duration = duration || DEFAULT_DURATION;
+
+            const container = getContainer();
+            if (!container) return null;
+
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.innerHTML =
+                (ICONS[type] || ICONS.info) +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button class="toast-close" aria-label="Fechar">' +
+                  '<svg viewBox="0 0 24 24" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                '</button>' +
+                '<div class="toast-progress" style="animation-duration:' + duration + 'ms"></div>';
+
+            container.appendChild(toast);
+
+            const bar   = toast.querySelector('.toast-progress');
+            let timerId = setTimeout(function(){ dismiss(toast); }, duration);
+
+            toast.addEventListener('mouseenter', function () {
+                clearTimeout(timerId);
+                bar.style.animationPlayState = 'paused';
+            });
+            toast.addEventListener('mouseleave', function () {
+                const pct = parseFloat(getComputedStyle(bar).width) / toast.offsetWidth;
+                bar.style.animationPlayState = 'running';
+                timerId = setTimeout(function(){ dismiss(toast); }, pct * duration);
+            });
+            toast.querySelector('.toast-close').addEventListener('click', function () {
+                clearTimeout(timerId);
+                dismiss(toast);
+            });
+            return toast;
+        }
+
+        function dismiss(toast) {
+            if (!toast || toast.classList.contains('toast-exit')) return;
+            toast.classList.add('toast-exit');
+            setTimeout(function(){ toast.remove(); }, 280);
+        }
+
+        function init() {
+            var bridge = document.getElementById('cgi-flash-bridge');
+            if (!bridge) return;
+            bridge.querySelectorAll('span[data-msg]').forEach(function(s) {
+                var type = { error:'error', success:'success', warning:'warning' }[s.dataset.type] || 'info';
+                show(s.dataset.msg, type);
+            });
+            bridge.remove();
+        }
+
+        return { show: show, dismiss: dismiss, init: init };
+    }());
+
+    // ==================================================================
+    // RippleEffect — Onda de clique em elementos interativos
+    // A animação completa 100% independente de soltar o mouse.
+    // Para <a> que navegam na mesma aba: a navegação é atrasada 320ms
+    // para que o ripple seja visível antes de a página mudar.
+    // ==================================================================
+    const RippleEffect = (function () {
+        var RIPPLE_DURATION = 700; // ms — deve ser >= duração do @keyframes
+
+        function createWave(el, clientX, clientY) {
+            var rect = el.getBoundingClientRect();
+            var w    = document.createElement('span');
+            w.className  = 'ripple-wave';
+            w.style.left = (clientX - rect.left) + 'px';
+            w.style.top  = (clientY - rect.top)  + 'px';
+            el.appendChild(w);
+            // Remove após a animação — independente de navegação
+            setTimeout(function(){ if (w.parentNode) w.remove(); }, RIPPLE_DURATION);
+        }
+
+        function attach(el) {
+            // Ripple inicia no pointerdown para feedback imediato
+            el.addEventListener('pointerdown', function (e) {
+                if (el.disabled) return;
+                createWave(el, e.clientX, e.clientY);
+            });
+
+            // Para <a> que navegam na mesma aba: atrasa a navegação
+            // 320ms para o ripple ser visível antes de a página mudar.
+            if (el.tagName === 'A' && el.getAttribute('href')) {
+                el.addEventListener('click', function (e) {
+                    // Modificadores ou target externo: comportamento nativo
+                    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+                    if (el.target === '_blank') return;
+                    e.preventDefault();
+                    var href = el.href;
+                    setTimeout(function () { window.location.href = href; }, 320);
+                });
+            }
+        }
+
+        function init() {
+            var SEL = '.btn-action,.btn-submit,.btn,.back-button,.theme-toggle,.btn-primary,.btn-secondary';
+            document.querySelectorAll(SEL).forEach(attach);
+            document.querySelectorAll('.station-card:not(.indisponivel)').forEach(attach);
+            document.querySelectorAll('.charger-card.livre,.charger-card.vip').forEach(attach);
+        }
+        return { init: init, attach: attach };
+    }());
+
+    // ==================================================================
+    // CardTilt — Inclinação 3D sutil seguindo cursor (apenas desktop)
+    // ==================================================================
+    const CardTilt = (function () {
+        var MAX = 4.5;
+
+        function attach(card) {
+            card.classList.add('tilt-enabled');
+            var raf;
+            card.addEventListener('mousemove', function (e) {
+                var self = this;
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(function() {
+                    var r  = self.getBoundingClientRect();
+                    var dx = (e.clientX - (r.left + r.width  / 2)) / (r.width  / 2);
+                    var dy = (e.clientY - (r.top  + r.height / 2)) / (r.height / 2);
+                    self.style.transform = 'perspective(900px) rotateX(' + (-dy*MAX) + 'deg) rotateY(' + (dx*MAX) + 'deg) translateY(-3px) scale(1.015)';
+                    self.style.transition = 'transform 0.06s ease';
+                });
+            });
+            card.addEventListener('mouseleave', function () {
+                cancelAnimationFrame(raf);
+                this.style.transition = 'transform 0.45s cubic-bezier(0.2, 0, 0, 1)';
+                this.style.transform  = '';
+            });
+        }
+
+        function init() {
+            if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+            document.querySelectorAll('.charger-card.livre,.charger-card.vip,.station-card:not(.indisponivel)').forEach(attach);
+        }
+        return { init: init, attach: attach };
+    }());
+
+    // ==================================================================
+    // PageProgress — Barra de carregamento durante navegação
+    // ==================================================================
+    (function () {
+        var bar = document.createElement('div');
+        bar.id = 'cgi-nav-bar';
+        document.body.appendChild(bar);
+
+        document.addEventListener('click', function (e) {
+            var link = e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+            try { if (new URL(href, location.href).hostname !== location.hostname) return; } catch(err) { return; }
+            bar.style.transform = 'scaleX(0.42)';
+            bar.style.opacity = '1';
+        });
+
+        window.addEventListener('pageshow', function () {
+            bar.style.transform = 'scaleX(1)';
+            setTimeout(function(){
+                bar.style.opacity = '0';
+                bar.style.transform = 'scaleX(0)';
+            }, 280);
+        });
+    }());
+
+    // ==================================================================
+    // INIT
+    // ==================================================================
+    document.addEventListener('DOMContentLoaded', function () {
+        ThemeManager.init();
+        PerfilMenu.init();
+        ToastSystem.init();
+        RippleEffect.init();
+        CardTilt.init();
+    });
+
+    window.ChargeGrid = { ThemeManager: ThemeManager, ToastSystem: ToastSystem, RippleEffect: RippleEffect, CardTilt: CardTilt };
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

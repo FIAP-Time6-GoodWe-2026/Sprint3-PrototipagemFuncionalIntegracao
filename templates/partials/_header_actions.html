@@ -1,0 +1,123 @@
+{# =============================================================================
+   Ações do cabeçalho — navegação do operador, tema e menu de perfil.
+
+   Incluído por mapa, index, formulario, dashboard, relatorio,
+   relatorio_consolidado, carteira, pagamento, recibo e admin. Antes deste
+   partial o bloco estava copiado em seis templates, o que tornaria o menu de
+   perfil seis edições em vez de uma.
+
+   Depende de `saldo_nc` e `reserva_ativa`, injetados pelo context_processor
+   de app.py, e de `session` (cookie do Flask, sempre disponível no Jinja).
+   ============================================================================= #}
+<div class="header-actions">
+
+    {% if session.get('staff') %}
+    <a href="{{ url_for('admin_home') }}" class="header-btn" title="Painel do operador">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             width="14" height="14" stroke-linecap="round" aria-hidden="true">
+            <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        </svg>
+        <span>Painel</span>
+    </a>
+    {% endif %}
+
+    <button class="theme-toggle" title="Alternar tema claro/escuro"
+            aria-label="Alternar tema claro/escuro">
+        <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>   <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>   <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+    </button>
+
+    <div class="perfil-wrapper">
+        <button class="perfil-trigger" id="perfilTrigger" type="button"
+                aria-haspopup="true" aria-expanded="false" aria-controls="perfilMenu"
+                title="{{ session.get('nome', 'Perfil') }}">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                 aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span class="sr-only">Abrir menu do perfil</span>
+        </button>
+
+        <div class="perfil-menu" id="perfilMenu" role="menu" hidden>
+
+            <div class="perfil-cabecalho">
+                <span class="perfil-avatar" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </span>
+                <div>
+                    <div class="perfil-nome">{{ session.get('nome') }}</div>
+                    <div class="perfil-tipo">
+                        {{ session.get('tipo') | tipo_pt }}{% if session.get('staff') %} · Operador{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <a class="perfil-saldo{% if saldo_nc < 20 %} baixo{% endif %}"
+               href="{{ url_for('carteira') }}" role="menuitem">
+                <svg class="nc-simbolo" aria-hidden="true"><use href="#moeda-nexus"/></svg>
+                <span>
+                    <span class="valor">{{ saldo_nc | brl }}</span>
+                    <span class="moeda">NexusCoin</span>
+                </span>
+            </a>
+
+            {% if reserva_ativa %}
+            <a class="perfil-reserva"
+               href="{{ url_for('posto', posto_id=reserva_ativa.station_id) }}"
+               role="menuitem">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     width="14" height="14" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Reserva ativa em {{ reserva_ativa.charger_id }}
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('carteira', next=request.path) }}"
+               class="perfil-item destaque" role="menuitem">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Recarregar NexusCoin
+            </a>
+
+            {% if session.get('staff') %}
+            <a href="{{ url_for('admin_home') }}" class="perfil-item" role="menuitem">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Painel de administrador
+            </a>
+            {% endif %}
+
+            <a href="{{ url_for('logout') }}" class="perfil-item sair" role="menuitem">
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Sair
+            </a>
+        </div>
+    </div>
+</div>

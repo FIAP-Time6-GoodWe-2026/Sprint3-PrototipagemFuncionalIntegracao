@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if s.is_active %}Recarregando{% else %}Recibo{% endif %} — ChargeGrid Intelligence
+{% endblock %}
+{% block corpo_classe %}leitura{% endblock %}
+
+{% block extra_css %}
+<style>
+    .av-topo {
+        background: var(--cor-primaria); color: #fff;
+        padding: var(--sp-5) 0; margin-bottom: var(--sp-6);
+    }
+    .av-topo h1 { font-size: var(--fs-xl); line-height: var(--lh-tight); margin: 0; }
+    .av-topo p  { font-size: var(--fs-sm); opacity: .88; margin: 2px 0 0; }
+
+    .av-grid {
+        display: grid; gap: var(--sp-5);
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        align-items: start;
+    }
+    @media (max-width: 820px) { .av-grid { grid-template-columns: 1fr; } }
+
+    .medidores { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); }
+    .medidor .heroi { font-size: var(--fs-2xl); }
+
+    .linha-valor {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: var(--sp-3); padding: 10px 0; border-bottom: 1px solid var(--cor-borda);
+    }
+    .linha-valor:last-child { border-bottom: 0; }
+    .linha-valor span { font-size: var(--fs-sm); color: var(--cor-texto-secundario); }
+    .linha-valor strong { font-variant-numeric: tabular-nums; }
+    .linha-total { border-top: 2px solid var(--cor-texto); margin-top: var(--sp-2); }
+    .linha-total strong, .linha-total span { font-size: var(--fs-lg); color: inherit; }
+
+    .estorno-destaque {
+        border: 1px solid var(--cor-sucesso, #2e7d5b); border-radius: var(--r-md);
+        padding: var(--sp-4); margin-top: var(--sp-4);
+    }
+    .estorno-valor {
+        font-size: var(--fs-2xl); font-weight: var(--fw-bold);
+        color: var(--cor-sucesso, #2e7d5b); font-variant-numeric: tabular-nums;
+    }
+
+    .selo {
+        display: inline-block; font-size: var(--fs-2xs); font-weight: var(--fw-semibold);
+        letter-spacing: .05em; text-transform: uppercase;
+        border-radius: 999px; padding: 4px 10px; border: 1px solid currentColor;
+    }
+    .qr-caixa { text-align: center; }
+    .qr-caixa svg { width: 160px; height: 160px; }
+    .nota { font-size: var(--fs-sm); color: var(--cor-texto-secundario); }
+    .link-guardar {
+        font-family: var(--fonte-mono, monospace); font-size: var(--fs-2xs);
+        word-break: break-all; background: rgba(127,127,127,.1);
+        border-radius: var(--r-sm); padding: 8px 10px; display: block;
+    }
+</style>
+{% endblock %}
+
+{% block header %}
+<div class="av-topo">
+    <div class="container">
+        <h1>{% if s.is_active %}Recarregando{% else %}Recarga concluída{% endif %}</h1>
+        <p>{{ posto.nome }} · {{ s.charger_id }} · {{ s.vehicle_id }}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="av-grid">
+
+    <div class="card">
+        <div class="card-titulo">
+            {% if s.is_active %}Em andamento{% else %}Encerrada{% endif %}
+            <span class="selo" style="margin-left: var(--sp-2)">{{ s.status.value }}</span>
+        </div>
+        <p class="card-sub">Sessão {{ s.session_id }}</p>
+
+        <div class="medidores">
+            <div class="medidor">
+                <div class="rotulo">Energia</div>
+                <div class="heroi">{{ '%.2f' | format(s.energy_kwh) }}<small> kWh</small></div>
+            </div>
+            <div class="medidor">
+                <div class="rotulo">Potência</div>
+                <div class="heroi">{{ '%.1f' | format(s.allocated_power_kw) }}<small> kW</small></div>
+            </div>
+            <div class="medidor">
+                <div class="rotulo">Tempo</div>
+                <div class="heroi">{{ '%.0f' | format(s.duration_minutes) }}<small> min</small></div>
+            </div>
+        </div>
+
+        {% if s.is_active %}
+        <form method="POST" action="{{ url_for('avulso_encerrar', token=token) }}"
+              style="margin-top: var(--sp-5)">
+            <button type="submit" class="btn-bloco primario">
+                <span class="rotulo-btn">Encerrar recarga e acertar a caução</span>
+            </button>
+        </form>
+        <p class="nota" style="margin-top: var(--sp-3)">
+            Ao encerrar, o consumo é descontado da caução e a diferença é
+            devolvida na mesma forma de pagamento.
+        </p>
+
+        <div style="margin-top: var(--sp-5)">
+            <div class="rotulo">Guarde este endereço para voltar</div>
+            <code class="link-guardar">{{ url_for('avulso_sessao', token=token, _external=True) }}</code>
+            <p class="nota" style="margin-top: var(--sp-2)">
+                Sem cadastro, é este link que identifica a sua recarga.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-titulo">
+            {% if s.is_active %}Prévia da conta{% else %}Acerto da caução{% endif %}
+        </div>
+        <p class="card-sub">
+            {% if s.is_active %}
+                Valores parciais — sobem enquanto o carro carrega.
+            {% else %}
+                {{ metodo_label }}
+            {% endif %}
+        </p>
+
+        <div class="linha-valor">
+            <span>Energia × tarifa</span>
+            <strong>{{ '%.3f' | format(cobranca.energia_kwh) }} kWh ×
+                    R$ {{ cobranca.tarifa_kwh | brl }}</strong>
+        </div>
+        <div class="linha-valor">
+            <span>Consumo</span>
+            <strong>R$ {{ cobranca.subtotal_brl | brl }}</strong>
+        </div>
+        <div class="linha-valor">
+            <span>Caução retida</span>
+            <strong>− R$ {{ caucao | brl }}</strong>
+        </div>
+
+        {% if estorno > 0 %}
+        <div class="estorno-destaque">
+            <div class="rotulo">{% if s.is_active %}Sobra até agora{% else %}Volta para você{% endif %}</div>
+            <div class="estorno-valor">R$ {{ estorno | brl }}</div>
+            <p class="nota" style="margin: var(--sp-2) 0 0">
+                Consumo de R$ {{ cobranca.subtotal_brl | brl }} abatido de uma caução
+                de R$ {{ caucao | brl }}.
+            </p>
+        </div>
+        {% endif %}
+
+        <div class="linha-valor linha-total">
+            <span>{% if cobranca.total_brl > 0 %}Ainda a pagar{% else %}A pagar{% endif %}</span>
+            <strong>R$ {{ cobranca.total_brl | brl }}</strong>
+        </div>
+
+        {% if cobranca.total_brl > 0 %}
+        <p class="nota" style="margin-top: var(--sp-3)">
+            O consumo passou da caução. A diferença é cobrada
+            {% if s.is_active %}no encerramento{% else %}na mesma forma de pagamento{% endif %}.
+        </p>
+        {% endif %}
+
+        {% if not s.is_active %}
+        <div class="qr-caixa" style="margin-top: var(--sp-5)">
+            {{ qr_svg | safe }}
+            <p class="nota" style="margin-top: var(--sp-2)">
+                Comprovante da sessão {{ s.session_id }}
+            </p>
+        </div>
+        <p class="nota" style="margin-top: var(--sp-4)">
+            Quer acumular cashback na próxima?
+            <a href="{{ url_for('login') }}">Crie uma conta</a> e pague com
+            NexusCoin.
+        </p>
+        {% endif %}
+    </div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if s.is_active %}
+<script>
+    // Sem conta não há dashboard para acompanhar: a própria página se atualiza
+    // para o motorista ver a energia subindo enquanto espera.
+    setTimeout(function () { window.location.reload(); }, 10000);
+</script>
+{% endif %}
+{% endblock %}

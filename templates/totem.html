@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Recarga sem cadastro — ChargeGrid Intelligence{% endblock %}
+{% block corpo_classe %}leitura{% endblock %}
+
+{% block extra_css %}
+<style>
+    .totem-topo {
+        background: var(--cor-primaria);
+        color: #fff;
+        padding: var(--sp-5) 0;
+        margin-bottom: var(--sp-6);
+    }
+    .totem-topo .container { display: flex; align-items: center; gap: var(--sp-4); }
+    .totem-topo h1 { font-size: var(--fs-xl); line-height: var(--lh-tight); margin: 0; }
+    .totem-topo p  { font-size: var(--fs-sm); opacity: .88; margin: 2px 0 0; }
+    .totem-voltar {
+        color: #fff; text-decoration: none; font-size: var(--fs-sm);
+        border: 1px solid rgba(255,255,255,.45); border-radius: var(--r-md);
+        padding: 6px 12px; white-space: nowrap;
+    }
+    .totem-voltar:hover { background: rgba(255,255,255,.14); }
+
+    .totem-grid {
+        display: grid; gap: var(--sp-5);
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+        align-items: start;
+    }
+    @media (max-width: 820px) { .totem-grid { grid-template-columns: 1fr; } }
+
+    .linha-valor {
+        display: flex; justify-content: space-between; align-items: baseline;
+        gap: var(--sp-3); padding: 10px 0;
+        border-bottom: 1px solid var(--cor-borda);
+    }
+    .linha-valor:last-child { border-bottom: 0; }
+    .linha-valor .rotulo { text-transform: none; letter-spacing: 0; font-weight: var(--fw-regular); }
+    .linha-valor strong { font-variant-numeric: tabular-nums; }
+
+    .caucao-destaque {
+        background: var(--cor-fundo-alt, rgba(127,127,127,.08));
+        border: 1px solid var(--cor-borda);
+        border-radius: var(--r-md);
+        padding: var(--sp-4);
+        margin: var(--sp-4) 0;
+    }
+    .caucao-valor { font-size: var(--fs-2xl); font-weight: var(--fw-bold); }
+
+    .qr-caixa { text-align: center; }
+    .qr-caixa svg { width: 190px; height: 190px; }
+
+    .conectores { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+    .conector-link {
+        display: inline-flex; flex-direction: column; gap: 2px;
+        border: 1px solid var(--cor-borda); border-radius: var(--r-md);
+        padding: 10px 14px; text-decoration: none; color: inherit; min-width: 92px;
+    }
+    .conector-link:hover { border-color: var(--cor-primaria); }
+    .conector-link span { font-size: var(--fs-2xs); color: var(--cor-texto-secundario); }
+    .conector-link strong { font-size: var(--fs-md); }
+
+    .metodos { display: flex; gap: var(--sp-3); margin: var(--sp-2) 0 var(--sp-4); }
+    .metodo {
+        flex: 1; display: flex; align-items: center; gap: var(--sp-2);
+        border: 1px solid var(--cor-borda); border-radius: var(--r-md);
+        padding: 12px 14px; cursor: pointer;
+    }
+    .metodo:has(input:checked) { border-color: var(--cor-primaria); }
+
+    .nota { font-size: var(--fs-sm); color: var(--cor-texto-secundario); }
+</style>
+{% endblock %}
+
+{% block header %}
+<div class="totem-topo">
+    <div class="container">
+        <div style="flex:1">
+            <h1>{% if charger_id %}Liberar {{ charger_id }}{% else %}Recarga sem cadastro{% endif %}</h1>
+            <p>
+                {%- if charger_id -%}
+                    {{ posto.nome }} · {{ posto.endereco }}
+                {%- else -%}
+                    Carregue sem criar conta. A caução garante o pagamento.
+                {%- endif -%}
+            </p>
+        </div>
+        <a href="{{ url_for('login') }}" class="totem-voltar">Prefiro entrar na minha conta</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+{% if not charger_id %}
+    {# Escolha do conector: no posto de verdade, o QR do totem já traz o motorista
+       direto para o conector à frente dele. #}
+    <div class="card">
+        <div class="card-titulo">Escolha o conector</div>
+        <p class="card-sub">
+            No posto, cada totem tem o seu QR Code e esta etapa não existe —
+            a câmera abre direto o conector à sua frente.
+        </p>
+
+        {% for pid, posto in postos.items() %}
+        <div style="margin-bottom: var(--sp-5)">
+            <strong>{{ posto.nome }}</strong>
+            <div class="nota">{{ posto.endereco }}</div>
+            {% if disponiveis[pid] %}
+            <div class="conectores">
+                {% for cid in disponiveis[pid] %}
+                <a class="conector-link" href="{{ url_for('totem_liberar', charger_id=cid) }}">
+                    <strong>{{ cid.split('-')[1] }}</strong>
+                    <span>GoodWe 11 kW</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="nota" style="margin-top: var(--sp-2)">
+                Nenhum conector livre neste posto agora.
+            </p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+{% else %}
+    <div class="totem-grid">
+        <div class="card">
+            <div class="card-titulo">Seus dados</div>
+            <p class="card-sub">Só a placa. Não pedimos cadastro, CPF nem senha.</p>
+
+            <form method="POST" action="{{ url_for('totem_liberar', charger_id=charger_id) }}">
+                <div class="campo">
+                    <label for="placa">Placa do veículo</label>
+                    <input type="text" id="placa" name="placa" required autofocus
+                           autocapitalize="characters" spellcheck="false"
+                           placeholder="ABC1D23" maxlength="8">
+                </div>
+
+                <label class="rotulo" style="display:block; margin-top: var(--sp-4)">
+                    Forma de pagamento
+                </label>
+                <div class="metodos">
+                    {% for valor, rotulo in metodos %}
+                    <label class="metodo">
+                        <input type="radio" name="metodo" value="{{ valor }}"
+                               {% if loop.first %}checked{% endif %}>
+                        <span>{{ rotulo }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <div class="caucao-destaque">
+                    <div class="rotulo">Caução pré-autorizada</div>
+                    <div class="caucao-valor">R$ {{ caucao | brl }}</div>
+                    <p class="nota" style="margin: var(--sp-2) 0 0">
+                        O valor fica retido enquanto você carrega. No fim, o que
+                        você consumiu é descontado e <strong>a diferença volta
+                        para você</strong>. Se o consumo passar da caução, o
+                        restante é cobrado no encerramento.
+                    </p>
+                </div>
+
+                <button type="submit" class="btn-bloco primario">
+                    <span class="rotulo-btn">Autorizar e liberar o conector</span>
+                </button>
+                <p class="nota" style="margin-top: var(--sp-3)">
+                    Pré-autorização simulada nesta demonstração — nenhuma cobrança real é feita.
+                </p>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">{{ charger_id }}</div>
+            <p class="card-sub">GoodWe GW11K-HCA-20 · 11 kW</p>
+
+            <div class="qr-caixa">{{ qr_svg | safe }}</div>
+            <p class="nota" style="text-align:center; margin-top: var(--sp-2)">
+                O QR impresso no totem abre esta tela.
+            </p>
+
+            <div style="margin-top: var(--sp-5)">
+                <div class="linha-valor">
+                    <span class="rotulo">Tarifa agora</span>
+                    <strong>R$ {{ tarifa.tariff_kwh | brl }} / kWh</strong>
+                </div>
+                <div class="linha-valor">
+                    <span class="rotulo">Caução</span>
+                    <strong>R$ {{ caucao | brl }}</strong>
+                </div>
+                <div class="linha-valor">
+                    <span class="rotulo">Potência máxima</span>
+                    <strong>11 kW</strong>
+                </div>
+            </div>
+
+            <p class="nota" style="margin-top: var(--sp-4)">
+                A tarifa é fixada agora e não muda durante a recarga, mesmo que
+                o posto encha.
+            </p>
+        </div>
+    </div>
+{% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,541 @@
+{% extends "base.html" %}
+{% block title %}Relatório Consolidado — ChargeGrid Intelligence{% endblock %}
+
+{% block corpo_classe %}painel{% endblock %}
+
+{% block extra_css %}
+<style>
+.container { max-width: var(--rail); margin: 0 auto; padding: var(--sp-5) var(--sp-4); }
+
+.page-title {
+    font-size: 1.4rem; font-weight: 700; color: var(--cor-texto);
+    margin-bottom: 4px;
+}
+.page-sub {
+    font-size: 0.85rem; color: var(--cor-texto-secundario); margin-bottom: 24px;
+}
+
+/* ── TOTALIZADORES ── */
+.totals-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.total-card {
+    background: var(--cor-card);
+    border-radius: 12px;
+    border: 1px solid var(--cor-borda);
+    padding: 16px;
+    box-shadow: var(--sombra-sm);
+    text-align: center;
+}
+.total-val {
+    font-size: 1.5rem; font-weight: 700; color: var(--cor-texto);
+    line-height: 1.1;
+}
+.total-val.accent { color: var(--cor-primaria-texto); }
+.total-lbl {
+    font-size: 0.72rem; color: var(--cor-texto-secundario);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: 4px;
+}
+
+/* ── TABELA PRINCIPAL ── */
+.report-card {
+    background: var(--cor-card);
+    border-radius: 14px;
+    border: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-sm);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.report-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.9rem; font-weight: 700;
+    color: var(--cor-texto);
+    display: flex; align-items: center; gap: 8px;
+}
+.report-card-header svg { width: 16px; height: 16px; stroke: var(--cor-primaria-texto); fill: none; }
+
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.report-table th {
+    text-align: left; padding: 10px 14px;
+    background: var(--cor-table-header);
+    color: var(--cor-texto-secundario);
+    font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--cor-borda);
+    white-space: nowrap;
+}
+.report-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-texto); vertical-align: middle;
+}
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: var(--cor-fundo); }
+
+/* ── Ordenação e busca da tabela ──────────────────────────────────────
+   Ordenar e filtrar acontecem no cliente: a lista já está renderizada, e
+   uma ida ao servidor para reordenar 200 linhas seria round-trip sem
+   contrapartida. O polling de 2 s atualiza células pelo data-session-id,
+   não recria a tabela — por isso a ordem escolhida sobrevive a ele. */
+.report-table th.ordenavel { padding: 0; }
+.report-table th.ordenavel button {
+    width: 100%;
+    display: flex; align-items: center; gap: 5px;
+    padding: 10px 14px;
+    background: none; border: none;
+    font: inherit; color: inherit;
+    text-transform: inherit; letter-spacing: inherit;
+    text-align: left; cursor: pointer;
+    transition: color var(--t-rapida, 0.15s) var(--ease, ease);
+}
+.report-table th.ordenavel button:hover { color: var(--cor-texto); }
+.report-table th.ordenavel button::after {
+    content: "";
+    width: 0; height: 0; margin-left: auto;
+    border-left: 3.5px solid transparent;
+    border-right: 3.5px solid transparent;
+    border-bottom: 4.5px solid currentColor;
+    opacity: 0;
+    transition: opacity var(--t-rapida, 0.15s) var(--ease, ease),
+                transform var(--t-rapida, 0.15s) var(--ease, ease);
+}
+.report-table th.ordenavel button:hover::after { opacity: 0.35; }
+.report-table th[aria-sort] button { color: var(--cor-texto); }
+.report-table th[aria-sort] button::after { opacity: 1; }
+.report-table th[aria-sort="descending"] button::after { transform: rotate(180deg); }
+
+.tabela-controles {
+    margin-left: auto;
+    display: flex; align-items: center; gap: var(--sp-3, 12px);
+    font-weight: 400;
+}
+.tabela-busca {
+    position: relative;
+    display: flex; align-items: center;
+}
+.tabela-busca svg {
+    position: absolute; left: 9px;
+    width: 13px; height: 13px; pointer-events: none;
+    stroke: var(--cor-texto-secundario); fill: none; stroke-width: 2;
+}
+.tabela-busca input {
+    padding: 6px 10px 6px 27px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 7px;
+    background: var(--cor-card);
+    color: var(--cor-texto);
+    font-family: inherit; font-size: 0.78rem;
+    width: 190px;
+    transition: border-color var(--t-rapida, 0.15s) var(--ease, ease);
+}
+/* O cinza padrão do navegador para placeholder dá 3,17:1 no tema escuro,
+   abaixo do mínimo legível. Tingir a partir da paleta resolve nos dois temas.
+   O `opacity: 1` neutraliza o padrão do Firefox, que escurece ainda mais. */
+.tabela-busca input::placeholder {
+    color: var(--cor-texto-secundario);
+    opacity: 1;
+}
+.tabela-busca input:hover { border-color: var(--cor-texto-secundario); }
+.tabela-busca input:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(192, 0, 0, 0.12);
+}
+.tabela-contagem {
+    font-size: 0.75rem;
+    color: var(--cor-texto-secundario);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.tabela-vazia td {
+    padding: 28px !important;
+    text-align: center;
+    color: var(--cor-texto-secundario);
+}
+
+@media (max-width: 600px) {
+    .tabela-controles { width: 100%; margin: var(--sp-2, 8px) 0 0; }
+    .tabela-busca { flex: 1; }
+    .tabela-busca input { width: 100%; }
+}
+
+.status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.7rem; font-weight: 600;
+    padding: 3px 9px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.status-CHARGING  { background: #D1FAE5; color: #065F46; }
+.status-THROTTLED { background: #FEF3C7; color: #92400E; }
+.status-FINISHED  { background: #EFF6FF; color: #1E40AF; }
+.status-FAULTED   { background: #FEE2E2; color: #991B1B; }
+.status-WAITING   { background: var(--cor-fundo); color: var(--cor-texto-secundario); }
+[data-theme="dark"] .status-CHARGING  { background: rgba(16,185,129,0.2); color: #34D399; }
+[data-theme="dark"] .status-THROTTLED { background: rgba(245,158,11,0.2); color: #FCD34D; }
+[data-theme="dark"] .status-FINISHED  { background: rgba(37,99,235,0.2);  color: #93C5FD; }
+[data-theme="dark"] .status-FAULTED   { background: rgba(239,68,68,0.2);  color: #FCA5A5; }
+
+.type-badge {
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 99px;
+    background: var(--cor-fundo); color: var(--cor-texto-secundario);
+    border: 1px solid var(--cor-borda);
+}
+
+/* ── REGISTRADORES MODBUS ── */
+.reg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 16px 20px;
+}
+.reg-item {
+    background: var(--cor-fundo);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--cor-borda);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+}
+.reg-addr { color: var(--cor-texto-secundario); font-size: 0.7rem; margin-bottom: 3px; }
+.reg-name { color: var(--cor-texto); font-weight: 600; margin-bottom: 2px; }
+.reg-val  { color: var(--cor-primaria-texto); font-weight: 700; }
+
+/* ── BOTÕES ── */
+.btn-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 9px;
+    color: var(--cor-texto);
+    text-decoration: none;
+    font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 20px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.btn-back:hover { border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(192,0,0,0.08); }
+.btn-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
+@media (max-width: 900px) {
+    .totals-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+    .totals-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('dashboard') }}" class="brand-icon" title="Dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </a>
+            <div>
+                <h1>Relatório Consolidado</h1>
+                <div class="header-subtitle">ChargeGrid Intelligence · Sprint 3</div>
+            </div>
+        </div>
+        {% include "partials/_header_actions.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+    <a href="{{ url_for('dashboard') }}" class="btn-back">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar ao Dashboard
+    </a>
+
+    <h2 class="page-title">Relatório de Sessões</h2>
+    <p class="page-sub">
+        Sessões desta execução do servidor · GoodWe GW11K-HCA-20.
+        As recargas já pagas saem da memória e vão para o histórico:
+        <a href="{{ url_for('admin_home') }}">{{ totais.historico_sessoes }} sessões
+        arquivadas, R$ {{ totais.historico_receita | brl }}</a>.
+    </p>
+
+    <!-- ── TOTALIZADORES ── -->
+    <div class="totals-grid">
+        <div class="total-card">
+            <div class="total-val">{{ totais.sessoes }}</div>
+            <div class="total-lbl">Sessões nesta execução</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val {% if totais.ativas > 0 %}accent{% endif %}">{{ totais.ativas }}</div>
+            <div class="total-lbl">Ativas agora</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ "%.3f"|format(totais.energia) }}</div>
+            <div class="total-lbl">kWh total</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val accent">R$ {{ "%.2f"|format(totais.receita) }}</div>
+            <div class="total-lbl">Receita desta execução</div>
+            <div class="total-lbl" style="margin-top:4px;font-size:0.7rem;opacity:0.8;">
+                Paga R$ {{ "%.2f"|format(totais.receita_realizada) }}
+                {% if totais.receita_pendente %}
+                · A receber R$ {{ "%.2f"|format(totais.receita_pendente) }}
+                {% endif %}
+                · Em curso R$ {{ "%.2f"|format(totais.receita_projetada) }}
+            </div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ totais.frames }}</div>
+            <div class="total-lbl">Frames Modbus</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ totais.decisoes }}</div>
+            <div class="total-lbl">Decisões potência</div>
+        </div>
+    </div>
+
+    <!-- ── TABELA DE SESSÕES ── -->
+    <div class="report-card">
+        <div class="report-card-header">
+            <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Sessões de Recarga
+            {% if sessoes %}
+            <div class="tabela-controles">
+                <label class="tabela-busca">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round">
+                        <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+                    </svg>
+                    <input type="search" id="busca-sessao"
+                           placeholder="ID, veículo ou conector"
+                           aria-label="Buscar sessão por ID, veículo ou conector"
+                           autocomplete="off">
+                </label>
+                <span class="tabela-contagem" id="contagem-sessoes" aria-live="polite"></span>
+            </div>
+            {% endif %}
+        </div>
+        {% if sessoes %}
+        <div style="overflow-x:auto;">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th class="ordenavel" data-tipo="texto" data-col="0"><button type="button">ID</button></th>
+                    <th class="ordenavel" data-tipo="texto" data-col="1"><button type="button">Carregador</button></th>
+                    <th class="ordenavel" data-tipo="texto" data-col="2"><button type="button">Usuário</button></th>
+                    <th class="ordenavel" data-tipo="texto" data-col="3"><button type="button">Veículo</button></th>
+                    <th class="ordenavel" data-tipo="texto" data-col="4"><button type="button">Status</button></th>
+                    <th class="ordenavel" data-tipo="num" data-col="5"><button type="button">Potência</button></th>
+                    <th class="ordenavel" data-tipo="num" data-col="6"><button type="button">Energia</button></th>
+                    <th class="ordenavel" data-tipo="num" data-col="7"><button type="button">Tarifa</button></th>
+                    <th class="ordenavel" data-tipo="num" data-col="8"><button type="button">Custo</button></th>
+                    <th class="ordenavel" data-tipo="num" data-col="9"><button type="button">Duração</button></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in sessoes %}
+            {% set d = s.to_report_dict() %}
+            <tr data-session-id="{{ d.session_id }}">
+                <td><code style="font-size:0.7rem;">{{ d.session_id }}</code></td>
+                <td>{{ d.charger_id }}</td>
+                <td>
+                    {{ d.user_name }}
+                    <span class="type-badge">{{ d.user_type | tipo_pt }}</span>
+                </td>
+                <td>{{ d.vehicle_id }}</td>
+                <td>
+                    <span class="status-badge status-{{ d.status }}">
+                        {{ d.status }}
+                    </span>
+                </td>
+                <td class="rep-kw" data-valor="{{ d.allocated_power_kw }}">{{ "%.1f"|format(d.allocated_power_kw) }} kW</td>
+                <td class="rep-energy" data-valor="{{ d.energy_kwh }}">{{ "%.3f"|format(d.energy_kwh) }} kWh</td>
+                <td data-valor="{{ d.tariff_kwh }}">R$ {{ "%.4f"|format(d.tariff_kwh) }}</td>
+                <td class="rep-cost" data-valor="{{ d.total_cost_brl }}"><strong>R$ {{ "%.2f"|format(d.total_cost_brl) }}</strong></td>
+                <td class="rep-min" data-valor="{{ d.duration_min }}">{{ d.duration_min }} min</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div style="padding:32px;text-align:center;color:var(--cor-texto-secundario);">
+            Nenhuma sessão nesta execução do servidor.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── SNAPSHOT DE REGISTRADORES MODBUS ── -->
+    {% if reg_snapshot %}
+    <div class="report-card">
+        <div class="report-card-header">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Estado dos Registradores Modbus (GW11K-HCA-20)
+        </div>
+        <div class="reg-grid">
+            {% set reg_names = {
+                10017: "Charging Status",
+                10015: "Charging Power",
+                10016: "Session Energy",
+                10029: "Max Power Limit",
+                10025: "Dyn Load Mgmt",
+                10060: "Charge Control",
+                10026: "Breaker Current"
+            } %}
+            {% for addr, val in reg_snapshot.items() %}
+            <div class="reg-item">
+                <div class="reg-addr">Reg {{ addr }}</div>
+                <div class="reg-name">{{ reg_names.get(addr, "Reserved") }}</div>
+                <div class="reg-val">0x{{ "%04X"|format(val) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Atualização em tempo real das sessões ativas no relatório (sem F5).
+   Só atualiza linhas de sessões que ainda estão ativas — as encerradas têm
+   valores finais e não mudam. */
+(function () {
+    var INTERVAL = 2000;
+
+    function atualizarCelula(linha, seletor, texto, valor, html) {
+        var td = linha.querySelector(seletor);
+        if (!td) return;
+        if (html) { td.innerHTML = texto; } else { td.textContent = texto; }
+        td.dataset.valor = valor;
+    }
+
+    function atualizar() {
+        fetch('/api/status')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                (data.sessoes_ativas || []).forEach(function (s) {
+                    var row = document.querySelector(
+                        'tr[data-session-id="' + s.session_id + '"]');
+                    if (!row) return;
+
+                    // O data-valor acompanha o texto: sem isso, reordenar
+                    // depois de um polling usaria o número de quando a
+                    // página carregou e as sessões ativas cairiam no lugar
+                    // errado da ordenação.
+                    atualizarCelula(row, '.rep-kw',
+                        s.allocated_kw.toFixed(1) + ' kW', s.allocated_kw);
+                    atualizarCelula(row, '.rep-energy',
+                        s.energy_kwh.toFixed(3) + ' kWh', s.energy_kwh);
+                    atualizarCelula(row, '.rep-cost',
+                        '<strong>R$ ' + s.cost_brl.toFixed(2) + '</strong>',
+                        s.cost_brl, true);
+                    atualizarCelula(row, '.rep-min',
+                        s.duration_min.toFixed(1) + ' min', s.duration_min);
+                });
+            })
+            .catch(function (e) { console.warn('Polling relatório:', e); });
+    }
+
+    setInterval(atualizar, INTERVAL);
+}());
+
+/* Ordenação por coluna e busca por ID, veículo ou conector.
+
+   Aqui a ordenação usa o `sort` nativo do JavaScript, e é o certo: nos
+   motores atuais ele é um Timsort, O(n log n), estável e testado por muita
+   gente. O bubble sort escrito à mão existe na entrega da disciplina de
+   Estruturas de Dados, um projeto à parte, onde o objeto de estudo é o
+   algoritmo em si;
+   em produção, reimplementar ordenação é trabalho a mais para chegar num
+   resultado pior. Com 200 sessões a diferença já é de 19.900 comparações
+   contra cerca de 1.500. */
+(function () {
+    var tabela = document.querySelector('.report-table');
+    if (!tabela) return;
+
+    var corpo    = tabela.querySelector('tbody');
+    var busca    = document.getElementById('busca-sessao');
+    var contagem = document.getElementById('contagem-sessoes');
+    var total    = corpo.rows.length;
+    var vazia    = null;
+
+    function valor(linha, col, tipo) {
+        var td = linha.cells[col];
+        if (!td) return tipo === 'num' ? 0 : '';
+        if (tipo === 'num') return parseFloat(td.dataset.valor) || 0;
+        return td.textContent.trim().toLowerCase();
+    }
+
+    function ordenar(th) {
+        var col  = Number(th.dataset.col);
+        var tipo = th.dataset.tipo;
+        var desc = th.getAttribute('aria-sort') === 'ascending';
+
+        tabela.querySelectorAll('th[aria-sort]').forEach(function (outro) {
+            outro.removeAttribute('aria-sort');
+        });
+        th.setAttribute('aria-sort', desc ? 'descending' : 'ascending');
+
+        var linhas = Array.prototype.slice.call(corpo.rows)
+            .filter(function (l) { return l !== vazia; });
+
+        linhas.sort(function (a, b) {
+            var va = valor(a, col, tipo), vb = valor(b, col, tipo);
+            if (va < vb) return desc ? 1 : -1;
+            if (va > vb) return desc ? -1 : 1;
+            return 0;
+        });
+
+        linhas.forEach(function (l) { corpo.appendChild(l); });
+        if (vazia) corpo.appendChild(vazia);
+    }
+
+    function filtrar() {
+        var termo = (busca.value || '').trim().toLowerCase();
+        var vistas = 0;
+
+        Array.prototype.slice.call(corpo.rows).forEach(function (linha) {
+            if (linha === vazia) return;
+            var casa = !termo || linha.textContent.toLowerCase().indexOf(termo) !== -1;
+            linha.hidden = !casa;
+            if (casa) vistas++;
+        });
+
+        if (termo && vistas === 0) {
+            if (!vazia) {
+                vazia = corpo.insertRow();
+                vazia.className = 'tabela-vazia';
+                var td = vazia.insertCell();
+                td.colSpan = tabela.rows[0].cells.length;
+                td.textContent = 'Nenhuma sessão corresponde à busca.';
+            }
+            vazia.hidden = false;
+        } else if (vazia) {
+            vazia.hidden = true;
+        }
+
+        contagem.textContent = termo
+            ? vistas + ' de ' + total + ' sessões'
+            : total + (total === 1 ? ' sessão' : ' sessões');
+    }
+
+    tabela.querySelectorAll('th.ordenavel button').forEach(function (botao) {
+        botao.addEventListener('click', function () {
+            ordenar(botao.parentNode);
+        });
+    });
+
+    if (busca) {
+        busca.addEventListener('input', filtrar);
+        filtrar();
+    }
+}());
+</script>
+{% endblock %}

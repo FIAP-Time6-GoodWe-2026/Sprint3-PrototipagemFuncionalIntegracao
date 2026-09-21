@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Entrar — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   LOGIN — layout dividido: painel da marca à esquerda, formulário à direita.
+
+   É a única tela do produto sem tarefa em andamento, e por isso a única onde a
+   expressão da marca vem antes da densidade. O painel escuro reproduz o
+   logotipo NexusCharge; em telas estreitas ele vira uma faixa compacta no topo.
+   ============================================================================= */
+
+body { animation: none; }            /* login não precisa de animação de entrada */
+
+.login-tela {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+}
+
+/* ── Painel da marca ─────────────────────────────────────────────────────── */
+.login-marca {
+    position: relative;
+    overflow: hidden;
+    background: #0D1017;                 /* fundo do logotipo original */
+    color: #E7EAF0;
+    display: flex;
+    flex-direction: column;
+    /* Centra nos DOIS eixos. Antes só o vertical estava centrado, e num
+       monitor 2K o conteúdo de 460px ficava colado na borda esquerda com
+       800px de vazio ao lado — o painel media 1311px. */
+    justify-content: center;
+    align-items: center;
+    padding: var(--sp-8) var(--sp-7);
+}
+
+/* Malha hexagonal do logotipo, redesenhada em CSS para acompanhar o painel
+   em qualquer tamanho sem esticar a imagem. */
+.login-hex {
+    position: absolute;
+    inset: -10%;
+    opacity: 0.5;
+    background-image:
+        repeating-linear-gradient(60deg,
+            rgba(192,0,0,0.13) 0 1px, transparent 1px 92px),
+        repeating-linear-gradient(-60deg,
+            rgba(192,0,0,0.13) 0 1px, transparent 1px 92px),
+        repeating-linear-gradient(0deg,
+            rgba(192,0,0,0.09) 0 1px, transparent 1px 80px);
+    pointer-events: none;
+}
+
+/* O bloco da marca acompanha o painel em vez de ficar num tamanho fixo:
+   cresce até 520px e para — o lockup não ganha nada em ser gigante. */
+.login-marca-conteudo {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+}
+
+.login-simbolo {
+    width: clamp(104px, 11vw, 148px);
+    height: clamp(104px, 11vw, 148px);
+    margin-bottom: var(--sp-6);
+}
+
+
+.login-wordmark {
+    font-size: clamp(2.4rem, 4.6vw, 3.4rem);
+    font-weight: var(--fw-bold);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--sp-4);
+}
+.login-wordmark span { color: #A8B0BD; font-weight: var(--fw-medium); display: block; }
+
+.login-regua {
+    width: 100%; height: 1px;
+    background: rgba(231,234,240,0.18);
+    margin: var(--sp-5) 0;
+}
+
+.login-assinatura {
+    font-size: var(--fs-sm);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8B93A1;
+}
+
+.login-pilares {
+    margin-top: var(--sp-6);
+    display: grid;
+    gap: var(--sp-3);
+}
+.login-pilar {
+    display: flex; align-items: flex-start; gap: var(--sp-3);
+    font-size: var(--fs-sm);
+    color: #B7BECB;
+    line-height: var(--lh-normal);
+}
+.login-pilar svg {
+    width: 16px; height: 16px; flex: 0 0 16px; margin-top: 3px;
+    stroke: #2ED3A0; fill: none; stroke-width: 2;
+}
+
+/* ── Painel do formulário ────────────────────────────────────────────────── */
+.login-form-lado {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-7) var(--sp-5);
+    background: var(--cor-fundo);
+    position: relative;
+}
+
+/* Em telas muito largas os dois painéis param de crescer: sem isto, a 2560px
+   cada lado passa de 1200px e o conteúdo boia. */
+.login-tela { max-width: 1920px; margin: 0 auto; }
+
+.login-tema {
+    position: absolute;
+    top: var(--sp-4); right: var(--sp-4);
+}
+.login-tema .theme-toggle {
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    color: var(--cor-texto-secundario);
+}
+.login-tema .theme-toggle svg { stroke: var(--cor-texto-secundario); }
+
+.login-card { width: 100%; max-width: 420px; }
+
+.login-titulo {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-tight);
+    margin-bottom: var(--sp-2);
+}
+.login-sub {
+    font-size: var(--fs-sm);
+    color: var(--cor-texto-secundario);
+    margin-bottom: var(--sp-6);
+}
+
+/* ── Contas de demonstração ─────────────────────────────────────────────── */
+.demo-bloco { margin-top: var(--sp-6); }
+
+.demo-titulo {
+    display: flex; align-items: center; gap: var(--sp-3);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--cor-texto-secundario);
+    margin-bottom: var(--sp-3);
+}
+.demo-titulo::before, .demo-titulo::after {
+    content: ""; flex: 1; height: 1px; background: var(--cor-borda);
+}
+
+.demo-lista { display: grid; gap: var(--sp-2); }
+
+.demo-conta {
+    display: flex; align-items: center; gap: var(--sp-3);
+    width: 100%;
+    padding: var(--sp-3);
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-md);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color var(--t-base) var(--ease),
+                background var(--t-base) var(--ease);
+}
+.demo-conta:hover { border-color: var(--cor-primaria); }
+
+.demo-avatar {
+    width: 34px; height: 34px; flex: 0 0 34px;
+    border-radius: var(--r-pill);
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    color: var(--cor-texto-secundario);
+}
+
+.demo-info { flex: 1; min-width: 0; }
+.demo-nome {
+    display: block;
+    font-size: var(--fs-sm); font-weight: var(--fw-semibold);
+    color: var(--cor-texto); line-height: var(--lh-tight);
+}
+.demo-papel {
+    display: block;
+    font-size: var(--fs-xs); color: var(--cor-texto-secundario);
+    margin-top: 2px;
+}
+
+.demo-saldo {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+    color: var(--cor-texto);
+    white-space: nowrap;
+}
+.demo-saldo small {
+    display: block; font-size: var(--fs-2xs); font-weight: var(--fw-regular);
+    color: var(--cor-texto-secundario); text-align: right;
+}
+
+.demo-nota {
+    margin-top: var(--sp-3);
+    font-size: var(--fs-xs);
+    color: var(--cor-texto-secundario);
+    text-align: center;
+}
+.demo-nota code {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    background: var(--cor-superficie-2);
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--r-sm);
+    padding: 1px 6px;
+}
+
+@media (max-width: 900px) {
+    .login-tela { grid-template-columns: 1fr; }
+    .login-marca {
+        padding: var(--sp-5) var(--sp-4);
+        flex-direction: row; align-items: center; gap: var(--sp-4);
+    }
+    .login-marca-conteudo { display: flex; align-items: center; gap: var(--sp-4); }
+    .login-simbolo { width: 56px; height: 56px; margin: 0; flex: 0 0 56px; }
+    .login-wordmark { font-size: 1.5rem; margin: 0; }
+    .login-wordmark span { display: inline; }
+    .login-regua, .login-assinatura, .login-pilares { display: none; }
+    .login-form-lado { padding: var(--sp-6) var(--sp-4) var(--sp-7); }
+}
+    /* ── Recarga sem cadastro ─────────────────────────────────────────── */
+    .sem-cadastro {
+        margin-top: var(--sp-5);
+        padding-top: var(--sp-5);
+        border-top: 1px solid var(--cor-borda);
+    }
+    .sem-cadastro-titulo {
+        font-size: var(--fs-2xs);
+        font-weight: var(--fw-semibold);
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--cor-texto-secundario);
+        text-align: center;
+        margin-bottom: var(--sp-4);
+    }
+    .sem-cadastro-corpo {
+        display: flex;
+        align-items: center;
+        gap: var(--sp-4);
+    }
+    .sem-cadastro-qr {
+        flex: 0 0 auto;
+        width: 96px;
+        height: 96px;
+        color: var(--cor-texto);
+    }
+    .sem-cadastro-qr svg { width: 100%; height: 100%; display: block; }
+    .sem-cadastro-texto { flex: 1; min-width: 0; }
+    .sem-cadastro-texto p {
+        font-size: var(--fs-sm);
+        color: var(--cor-texto-secundario);
+        margin: 0 0 var(--sp-3);
+        line-height: var(--lh-normal);
+    }
+    .sem-cadastro-link {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--sp-2);
+        font-size: var(--fs-sm);
+        font-weight: var(--fw-semibold);
+        text-decoration: none;
+        color: var(--cor-primaria);
+        border: 1px solid var(--cor-primaria);
+        border-radius: var(--r-md);
+        padding: 9px 14px;
+    }
+    .sem-cadastro-link:hover { background: rgba(192, 0, 0, .08); }
+    @media (max-width: 420px) {
+        .sem-cadastro-corpo { flex-direction: column; text-align: center; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-tela">
+
+    {# ── Painel da marca ─────────────────────────────────────────────── #}
+    <aside class="login-marca">
+        <div class="login-hex" aria-hidden="true"></div>
+        <div class="login-marca-conteudo">
+            <svg class="login-simbolo" role="img"
+                 aria-label="Logotipo NexusCharge"
+                 style="--marca-vermelho:#E11414; --marca-verde:#11B882; --marca-escuro:#0D1017;">
+                <use href="#marca-nexus"/>
+            </svg>
+
+            <h1 class="login-wordmark">NEXUS<span>CHARGE</span></h1>
+
+            <div class="login-regua" aria-hidden="true"></div>
+            <div class="login-assinatura">
+                ChargeGrid Intelligence · EV Challenge 2026 · FIAP × GoodWe
+            </div>
+
+            <div class="login-pilares">
+                <div class="login-pilar">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Orquestração de potência entre conectores, com controle
+                          dinâmico de carga no GW11K-HCA-20.</span>
+                </div>
+                <div class="login-pilar">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>Reserva de conector por 15 minutos, com sinal que vira
+                          crédito na recarga.</span>
+                </div>
+                <div class="login-pilar">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+                         aria-hidden="true">
+                        <path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/>
+                        <path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/>
+                        <path d="M18 12a2 2 0 0 0 0 4h4v-4z"/>
+                    </svg>
+                    <span>Pagamento em NexusCoin com {{ cashback_pct | default(10) }}%
+                          de cashback a cada recarga.</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    {# ── Painel do formulário ────────────────────────────────────────── #}
+    <main class="login-form-lado">
+        <div class="login-tema">
+            <button class="theme-toggle" title="Alternar tema claro/escuro"
+                    aria-label="Alternar tema claro/escuro">
+                <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="5"/>
+                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="login-card">
+            <h2 class="login-titulo">Entrar</h2>
+            <p class="login-sub">Acesse sua conta para encontrar um posto e iniciar uma recarga.</p>
+
+            <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+                <input type="hidden" name="next" value="{{ next }}">
+
+                <div class="campo">
+                    <label for="usuario">Usuário</label>
+                    <input type="text" id="usuario" name="usuario"
+                           autocomplete="username" autocapitalize="none"
+                           spellcheck="false" required autofocus
+                           placeholder="amanda">
+                </div>
+
+                <div class="campo">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha"
+                           autocomplete="current-password" required
+                           placeholder="••••">
+                </div>
+
+                <button type="submit" class="btn-bloco primario">
+                    <span class="rotulo-btn">Entrar</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </button>
+            </form>
+
+            <div class="demo-bloco">
+                <div class="demo-titulo">Contas de demonstração</div>
+
+                <div class="demo-lista">
+                    {% for chave, c in contas.items() %}
+                    <button type="button" class="demo-conta" data-usuario="{{ chave }}">
+                        <span class="demo-avatar" aria-hidden="true">
+                            {{ c.nome.split()[0][0] }}{{ c.nome.split()[-1][0] }}
+                        </span>
+                        <span class="demo-info">
+                            <span class="demo-nome">{{ c.nome }}</span>
+                            <span class="demo-papel">
+                                {{ chave }} · {% if c.staff %}Operador do posto{% else %}{{ c.tipo.value | tipo_pt }}{% endif %}
+                            </span>
+                        </span>
+                        <span class="demo-saldo">
+                            {{ c.saldo_inicial | brl }}
+                            <small>NexusCoin</small>
+                        </span>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                <p class="demo-nota">
+                    Clique em uma conta para preencher o formulário.
+                    Senha de todas: <code>{{ senha_demo }}</code>
+                </p>
+            </div>
+
+            <div class="sem-cadastro">
+                <div class="sem-cadastro-titulo">Ou carregue sem cadastro</div>
+                <div class="sem-cadastro-corpo">
+                    <div class="sem-cadastro-qr" aria-hidden="true">{{ qr_totem | safe }}</div>
+                    <div class="sem-cadastro-texto">
+                        <p>
+                            Aponte a câmera para o QR Code do totem, informe a placa
+                            e autorize a caução de R$ {{ caucao | brl }}. No fim, o que
+                            você não usou volta para você.
+                        </p>
+                        <a href="{{ url_for('totem_postos') }}" class="sem-cadastro-link">
+                            Simular leitura do QR
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round"
+                                 stroke-linejoin="round" aria-hidden="true"
+                                 style="width:16px;height:16px">
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                <polyline points="12 5 19 12 12 19"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+
+// Preenche o formulário ao clicar numa conta de demonstração.
+// Preenche e envia em um passo: numa banca, cada clique economizado conta.
+document.querySelectorAll('.demo-conta').forEach(function (botao) {
+    botao.addEventListener('click', function () {
+        document.getElementById('usuario').value = botao.dataset.usuario;
+        document.getElementById('senha').value = '{{ senha_demo }}';
+        document.getElementById('loginForm').submit();
+    });
+});
+</script>
+{% endblock %}

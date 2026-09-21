@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}Recibo — {{ r.session_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =============================================================================
+   RECIBO — momento de sucesso. É a única tela do produto com animação de
+   entrada: ela comunica conclusão, não decora.
+   ============================================================================= */
+
+.recibo-topo { text-align: center; margin-bottom: var(--sp-5); }
+
+.recibo-selo {
+    width: 64px; height: 64px;
+    margin: 0 auto var(--sp-4);
+    border-radius: var(--r-pill);
+    background: var(--cor-livre-texto);
+    display: flex; align-items: center; justify-content: center;
+    animation: seloEntra 340ms var(--ease) both;
+}
+.recibo-selo svg {
+    width: 30px; height: 30px;
+    stroke: #FFFFFF; fill: none; stroke-width: 3;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 40;
+    animation: risco 420ms var(--ease) 180ms both;
+}
+@keyframes seloEntra {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes risco { from { stroke-dashoffset: 40; } to { stroke-dashoffset: 0; } }
+
+.recibo-titulo {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-tight);
+    margin-bottom: var(--sp-2);
+}
+.recibo-sub { font-size: var(--fs-sm); color: var(--cor-texto-secundario); }
+
+.pago-bloco { text-align: center; padding: var(--sp-5) 0; }
+
+.cashback-faixa {
+    display: flex; align-items: center; justify-content: center; gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+    margin-top: var(--sp-4);
+    background: var(--cor-info-bg);
+    border-radius: var(--r-md);
+    color: var(--cor-livre-texto);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-semibold);
+}
+.cashback-faixa .nc-simbolo { width: 20px; height: 20px; }
+.cashback-faixa .valor { font-variant-numeric: tabular-nums; }
+
+.detalhes { margin-top: var(--sp-5); }
+.detalhe-linha {
+    display: flex; justify-content: space-between; gap: var(--sp-4);
+    padding: var(--sp-3) 0;
+    font-size: var(--fs-sm);
+    border-top: 1px solid var(--cor-borda);
+}
+.detalhe-linha dt { color: var(--cor-texto-secundario); }
+.detalhe-linha dd { font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums;
+                    text-align: right; }
+.detalhe-linha.desconto dd { color: var(--cor-livre-texto); }
+
+.recibo-id {
+    margin-top: var(--sp-4);
+    text-align: center;
+    font-size: var(--fs-2xs);
+    color: var(--cor-texto-secundario);
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+.recibo-acoes {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3);
+    margin-top: var(--sp-5);
+}
+
+@media (max-width: 640px) {
+    .recibo-acoes { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-info">
+            <h1>Recibo</h1>
+            <div class="header-subtitle">Comprovante da sessão de recarga</div>
+        </div>
+        {% include "partials/_header_actions.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container estreito">
+    <div class="card">
+
+        <div class="recibo-topo">
+            <div class="recibo-selo" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2 class="recibo-titulo">Pagamento confirmado</h2>
+            <p class="recibo-sub">
+                {{ posto.nome or r.station_id }} · {{ r.charger_id }} · {{ r.vehicle_id }}
+            </p>
+        </div>
+
+        <div class="pago-bloco">
+            <div class="rotulo">Valor pago</div>
+            <div class="heroi total-valor">R$ {{ pago | brl }}</div>
+            <div class="recibo-sub" style="margin-top: var(--sp-2)">
+                via {{ metodo_label }}
+            </div>
+
+            {% if r.cashback_nc > 0 %}
+            <div class="cashback-faixa">
+                <svg class="nc-simbolo" aria-hidden="true"><use href="#moeda-nexus"/></svg>
+                <span>
+                    <span class="valor" id="cashbackValor"
+                          data-alvo="{{ '%.2f'|format(r.cashback_nc) }}">0,00</span>
+                    NexusCoin de cashback creditados
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <dl class="detalhes">
+            <div class="detalhe-linha">
+                <dt>Energia fornecida</dt>
+                <dd>{{ r.energia_kwh | brl(3) }} kWh</dd>
+            </div>
+            <div class="detalhe-linha">
+                <dt>Duração</dt>
+                <dd>{{ r.duracao_min | brl(1) }} min</dd>
+            </div>
+            <div class="detalhe-linha">
+                <dt>Tarifa aplicada</dt>
+                <dd>R$ {{ r.tarifa_kwh | brl(4) }}/kWh</dd>
+            </div>
+            <div class="detalhe-linha">
+                <dt>Subtotal da recarga</dt>
+                <dd>R$ {{ r.custo_brl | brl }}</dd>
+            </div>
+            {% if r.sinal_abatido > 0 %}
+            <div class="detalhe-linha desconto">
+                <dt>Sinal da reserva abatido</dt>
+                <dd>− R$ {{ r.sinal_abatido | brl }}</dd>
+            </div>
+            {% endif %}
+            <div class="detalhe-linha">
+                <dt>Saldo NexusCoin</dt>
+                <dd>{{ saldo | brl }} NC</dd>
+            </div>
+            {% if cashback_total > 0 %}
+            <div class="detalhe-linha desconto">
+                <dt>Cashback acumulado na conta</dt>
+                <dd>{{ cashback_total | brl }} NC</dd>
+            </div>
+            {% endif %}
+        </dl>
+
+        <p class="recibo-id">{{ r.session_id }} · {{ r.fim | datahora_br }}</p>
+
+        <div class="recibo-acoes">
+            <a href="{{ url_for('carteira') }}" class="btn-bloco neutro">
+                <span class="rotulo-btn">Ver extrato</span>
+            </a>
+            <a href="{{ url_for('mapa') }}" class="btn-bloco primario">
+                <span class="rotulo-btn">Voltar ao mapa</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+
+// O cashback conta de zero até o valor creditado. É o único número animado do
+// produto: aqui a animação comunica um ganho, não enfeita um estado.
+(function () {
+    var el = document.getElementById('cashbackValor');
+    if (!el) return;
+
+    var alvo = parseFloat(el.dataset.alvo);
+    var reduzir = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function escrever(v) {
+        el.textContent = v.toLocaleString('pt-BR', { minimumFractionDigits: 2,
+                                                     maximumFractionDigits: 2 });
+    }
+
+    if (reduzir || !alvo) { escrever(alvo || 0); return; }
+
+    var inicio = null;
+    var duracao = 600;
+    function passo(t) {
+        if (inicio === null) inicio = t;
+        var p = Math.min((t - inicio) / duracao, 1);
+        escrever(alvo * (1 - Math.pow(1 - p, 3)));   // ease-out cúbico
+        if (p < 1) requestAnimationFrame(passo);
+    }
+    requestAnimationFrame(passo);
+}());
+</script>
+{% endblock %}
