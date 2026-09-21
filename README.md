@@ -3,7 +3,11 @@
 > Sistema inteligente de gerenciamento de recarga para eletropostos comerciais
 > **EV Challenge 2026 — FIAP + GoodWe · Sprint 3**
 
-📦 **Repositório:** https://github.com/FIAP-Time6-GoodWe-2026/ChargeGridIntelligence-NexusCharge-Sprint3
+ **Repositório:** https://github.com/FIAP-Time6-GoodWe-2026/Sprint3-PrototipagemFuncionalIntegracao
+
+    **Vídeo:** https://youtu.be/VrtqYSeRMHs?si=0YpC6TuVnXAM3no0
+
+ **Documentação da Sprint 3:** [`docs/ChargeGrid_Sprint3_Documentacao.pdf`](docs/ChargeGrid_Sprint3_Documentacao.pdf)
 
 ChargeGrid Intelligence resolve um problema concreto do segmento comercial e de
 varejo de eletropostos: a ausência de mecanismos integrados para **orquestrar
@@ -15,7 +19,7 @@ HCA G2), e a integração é simulada via protocolo industrial **Modbus TCP**.
 
 ---
 
-## 🆕 O que o Sprint 3 acrescenta
+##  O que o Sprint 3 acrescenta
 
 O Sprint 2 entregou a orquestração de potência e a tarifação dinâmica. O
 Sprint 3 fecha o ciclo comercial: **quem é o usuário, como ele reserva, e como
@@ -29,14 +33,13 @@ ele paga**.
 | **Encerrar e pagar** | Botão na tela do posto encerra a própria recarga e leva à tela de pagamento, com NexusCoin, Pix (QR simulado) e cartão salvo. |
 | **Menu de perfil** | Avatar no cabeçalho com nome, saldo, atalho de recarga e — para o operador — acesso ao painel. |
 | **Painel do operador** | Hub em `/admin` reunindo dashboard, relatório, log Modbus e testes, com indicadores ao vivo e exportação em CSV. |
-| **Recarga sem cadastro** | Quem não quer criar conta aponta a câmera para o QR do totem, informa a placa e autoriza uma caução de R$ 50,00. A caução abate o consumo no fim e a diferença é estornada — o mesmo mecanismo das redes públicas, sem senha e sem liberação manual. |
 | **Persistência** | SQLite (`sqlite3` da biblioteca padrão) guarda carteiras, extrato, reservas e histórico de sessões. |
 | **Estruturas de Dados** | Busca e ordenação implementadas à mão em `algoritmos.py`, **rodando em produção** (`get_session` e `rebalance`), com um segundo ponto de entrada em `menu.py` — menu de terminal sobre a mesma coleção de sessões. |
 | **Fundação de design** | Escala tipográfica, espaçamento, raios e movimento em tokens; contrastes corrigidos para WCAG AA nos dois temas; foco de teclado visível; `prefers-reduced-motion`. |
 
 ---
 
-## 🚀 Como executar
+##  Como executar
 
 **Pré-requisito:** Python 3.11+. As duas bibliotecas (`flask` e `pytest`) são
 instaladas automaticamente na primeira execução. O banco de dados usa o módulo
@@ -94,7 +97,7 @@ do operador.
 
 ---
 
-## 👤 Contas de demonstração
+##  Contas de demonstração
 
 Senha de todas: **`1234`**. Cada conta demonstra um caminho diferente do produto.
 
@@ -109,7 +112,7 @@ Na tela de login, clicar em uma conta preenche e envia o formulário.
 
 ---
 
-## 🧭 Roteiro de demonstração (≈ 4 min)
+##  Roteiro de demonstração (≈ 4 min)
 
 1. **Entrar como `amanda`** → o mapa mostra os três postos, com Berrini lotado
    e Paulista em throttle.
@@ -128,7 +131,7 @@ Na tela de login, clicar em uma conta preenche e envia o formulário.
 
 ---
 
-## 🏗️ Arquitetura
+##  Arquitetura
 
 Arquitetura modular em camadas, sem dependências circulares. Nenhuma regra de
 negócio vive na camada web.
@@ -151,14 +154,14 @@ logica_recarga.py       Lógica de simulação do Sprint 1
 
 db.py                   Persistência SQLite (stdlib) — carteira, reservas, histórico
 auth.py                 Contas e autenticação (mockup acadêmico)
-wallet.py               Carteira NexusCoin: saldo, débito, crédito, cashback
+wallet.py                Carteira NexusCoin: saldo, débito, crédito, cashback
 reservations.py         Reserva de conector com sinal e expiração preguiçosa
-billing.py              Composição da cobrança de uma sessão encerrada
+billing.py               Composição da cobrança de uma sessão encerrada
 qr.py                   QR Code simulado em SVG (Pix)
    ↑
 app.py                  Camada web Flask — rotas, validação e orquestração
 menu.py                 Camada de terminal — mesmo sistema, sem Flask
-templates/              14 telas + partial de cabeçalho
+templates/               14 telas + partial de cabeçalho
 static/                 favicon
 test_chargegrid.py      189 testes automatizados
 seed_historico.py       Gerador de histórico sintético para as análises
@@ -184,7 +187,7 @@ de testes. Decidimos que não se paga nesta escala.
 
 ---
 
-## 💰 Regras de negócio
+##  Regras de negócio
 
 ### Controle de potência
 - Limite por posto: **33 kW** (3 conectores a 11 kW cabem; o 4º dispara throttle)
@@ -225,7 +228,7 @@ carregar por um minuto seria uma forma de mover dinheiro de graça.
 
 ---
 
-## 🔌 Integração Modbus (registradores HCA G2)
+##  Integração Modbus (registradores HCA G2)
 
 | Registrador | Função | Acesso |
 |:-:|---|:-:|
@@ -239,12 +242,12 @@ carregar por um minuto seria uma forma de mover dinheiro de graça.
 
 ---
 
-## 🗺️ Rotas
+##  Rotas
 
 ### Usuário
 | Método | Rota | Função |
 |---|---|---|
-| GET/POST | `/login` | Autenticação |
+| GET/POST | `/login` | Autenticação (única rota pública) |
 | GET | `/logout` | Encerra a sessão |
 | GET | `/` | Mapa de postos |
 | GET | `/posto/<id>` | Conectores do posto, com reserva e encerramento |
@@ -258,17 +261,6 @@ carregar por um minuto seria uma forma de mover dinheiro de graça.
 | GET | `/recibo/<id>` | Comprovante |
 | GET | `/carteira` | Saldo e extrato NexusCoin |
 | POST | `/carteira/recarregar` | Compra de NexusCoin |
-
-### Sem cadastro (rotas públicas, sem login)
-| Método | Rota | Função |
-|---|---|---|
-| GET | `/totem` | Conectores livres — o que o QR do totem abriria |
-| GET/POST | `/totem/<carregador>` | Placa, forma de pagamento e caução; libera o conector |
-| GET | `/avulso/<token>` | Acompanhamento da recarga e, depois, o recibo com o estorno |
-| POST | `/avulso/<token>/encerrar` | Encerra e acerta a caução na mesma operação |
-
-O token da URL é o que identifica a sessão: sem conta, é ele que faz o papel
-de credencial, e vale só para aquela recarga.
 
 ### Operador (staff)
 | Método | Rota | Função |
@@ -287,7 +279,7 @@ de credencial, e vale só para aquela recarga.
 
 ---
 
-## 🧪 Testes
+## Testes
 
 ```bash
 pytest -v   # ou pela interface, em /testes
@@ -319,7 +311,7 @@ então executá-la **não altera o `chargegrid.db` da demonstração**.
 
 ---
 
-## 🧮 Estruturas de Dados e Algoritmos
+##  Estruturas de Dados e Algoritmos
 
 A entrega da disciplina **não é um programa separado**: os algoritmos pedidos
 foram implementados dentro do sistema e rodam em produção.
@@ -372,12 +364,11 @@ justifica o insertion no `rebalance`.
 
 A análise completa, com o trecho de código que provoca o crescimento de cada
 algoritmo, está no **`RELATORIO_SPRINT3_DSA.pdf`**, que acompanha o pacote
-de entrega — fora deste repositório, porque é documento de disciplina e não
-parte do aplicativo.
+de entrega — fora deste repositório.
 
 ---
 
-## 📊 Dados para as análises estatísticas
+##  Dados para as análises estatísticas
 
 As disciplinas de Modelagem Linear e de Estruturas de Dados precisam de algumas
 centenas de sessões. O gerador produz um histórico plausível **pelas mesmas
@@ -399,7 +390,7 @@ com uma inclinação um pouco maior. A dispersão em torno dela é o throttling.
 
 ---
 
-## 🎨 Design
+##  Design
 
 Modo **Operate**: o usuário está executando uma tarefa, então escaneabilidade e
 consistência valem mais que expressão. A marca vive nos detalhes.
@@ -422,7 +413,7 @@ também de símbolo da moeda NexusCoin.
 
 ---
 
-## 🛠️ Stack
+##  Stack
 
 - **Backend:** Python 3 · Flask
 - **Persistência:** SQLite (`sqlite3` da stdlib — sem ORM, sem instalação)
@@ -433,7 +424,7 @@ também de símbolo da moeda NexusCoin.
 
 ---
 
-## 👥 Equipe
+##  Equipe
 
 Projeto desenvolvido para o **EV Challenge 2026** (FIAP + GoodWe).
 
@@ -448,6 +439,6 @@ Projeto desenvolvido para o **EV Challenge 2026** (FIAP + GoodWe).
 
 ---
 
-## 📄 Licença
+##  Licença
 
 Projeto acadêmico desenvolvido no contexto do EV Challenge 2026 (FIAP + GoodWe).
