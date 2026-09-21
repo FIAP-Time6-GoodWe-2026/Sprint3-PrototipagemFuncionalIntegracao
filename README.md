@@ -5,7 +5,7 @@
 
  **Repositório:** https://github.com/FIAP-Time6-GoodWe-2026/Sprint3-PrototipagemFuncionalIntegracao
 
-    **Vídeo:** https://youtu.be/VrtqYSeRMHs?si=0YpC6TuVnXAM3no0
+   **Vídeo:** https://youtu.be/VrtqYSeRMHs?si=0YpC6TuVnXAM3no0
 
  **Documentação da Sprint 3:** [`docs/ChargeGrid_Sprint3_Documentacao.pdf`](docs/ChargeGrid_Sprint3_Documentacao.pdf)
 
