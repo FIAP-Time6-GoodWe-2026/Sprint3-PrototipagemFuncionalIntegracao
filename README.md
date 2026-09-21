@@ -1,2 +1,2 @@
-# Sprint3-PrototipagemFuncional-Integrac-o
+# Sprint3-PrototipagemFuncional_Integracao
 Nexus
