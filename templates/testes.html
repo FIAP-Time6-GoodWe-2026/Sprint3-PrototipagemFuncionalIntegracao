@@ -173,7 +173,7 @@
             </a>
             <div>
                 <h1>Testes Automatizados</h1>
-                <div class="header-subtitle">ChargeGrid Intelligence · pytest · 61 casos</div>
+                <div class="header-subtitle">ChargeGrid Intelligence · pytest · 189 casos</div>
             </div>
         </div>
         {% include "partials/_header_actions.html" %}
@@ -189,14 +189,14 @@
     </a>
 
     <h2 class="page-title">Suítes de Teste</h2>
-    <p class="page-sub">Selecione uma suíte ou execute todos os 61 casos de uma vez. Os testes rodam via pytest no servidor e o resultado aparece aqui em tempo real.</p>
+    <p class="page-sub">Selecione uma suíte ou execute todos os 189 casos de uma vez. Os testes rodam via pytest no servidor e o resultado aparece aqui em tempo real.</p>
 
     <!-- ── SELEÇÃO DE SUÍTE ── -->
     <div class="suites-grid">
-        <button class="suite-btn active" data-suite="" onclick="selectSuite(this, '', 'Todos os testes (61)')">
+        <button class="suite-btn active" data-suite="" onclick="selectSuite(this, '', 'Todos os testes (189)')">
             <div class="suite-icon">🧪</div>
             <div class="suite-name">Todos</div>
-            <div class="suite-count">61 casos</div>
+            <div class="suite-count">189 casos</div>
         </button>
         <button class="suite-btn" data-suite="TestPricingEngine" onclick="selectSuite(this, 'TestPricingEngine', 'PricingEngine (13)')">
             <div class="suite-icon">💰</div>
@@ -232,6 +232,81 @@
             <div class="suite-icon">⭐</div>
             <div class="suite-name">Conector VIP</div>
             <div class="suite-count">4 casos — exclusividade do C5</div>
+        </button>
+        <button class="suite-btn" data-suite="TestAutenticacao" onclick="selectSuite(this, 'TestAutenticacao', 'Autenticação (12)')">
+            <div class="suite-icon">🔐</div>
+            <div class="suite-name">Autenticação</div>
+            <div class="suite-count">12 casos — login, guarda e open redirect</div>
+        </button>
+        <button class="suite-btn" data-suite="TestCarteira" onclick="selectSuite(this, 'TestCarteira', 'Carteira NexusCoin (9)')">
+            <div class="suite-icon">💳</div>
+            <div class="suite-name">Carteira NexusCoin</div>
+            <div class="suite-count">9 casos — saldo, débito/crédito, extrato</div>
+        </button>
+        <button class="suite-btn" data-suite="TestReserva" onclick="selectSuite(this, 'TestReserva', 'Reserva de conector (12)')">
+            <div class="suite-icon">⏱️</div>
+            <div class="suite-name">Reserva de conector</div>
+            <div class="suite-count">12 casos — sinal, expiração, cancelamento</div>
+        </button>
+        <button class="suite-btn" data-suite="TestBilling" onclick="selectSuite(this, 'TestBilling', 'Cobrança / Billing (5)')">
+            <div class="suite-icon">🧾</div>
+            <div class="suite-name">Cobrança (Billing)</div>
+            <div class="suite-count">5 casos — abatimento do sinal, cashback</div>
+        </button>
+        <button class="suite-btn" data-suite="TestPagamento" onclick="selectSuite(this, 'TestPagamento', 'Pagamento (15)')">
+            <div class="suite-icon">💰</div>
+            <div class="suite-name">Pagamento</div>
+            <div class="suite-count">15 casos — três métodos, duplo clique, CSV</div>
+        </button>
+        <button class="suite-btn" data-suite="TestCoerenciaDeEstado" onclick="selectSuite(this, 'TestCoerenciaDeEstado', 'Coerência de estado (7)')">
+            <div class="suite-icon">🧭</div>
+            <div class="suite-name">Coerência de estado</div>
+            <div class="suite-count">7 casos — ocupação, reservas, rótulos (B44–B49)</div>
+        </button>
+        <button class="suite-btn" data-suite="TestQRSimulado" onclick="selectSuite(this, 'TestQRSimulado', 'QR simulado (2)')">
+            <div class="suite-icon">🔳</div>
+            <div class="suite-name">QR simulado</div>
+            <div class="suite-count">2 casos — determinismo e rótulo acessível</div>
+        </button>
+        <button class="suite-btn" data-suite="TestRelatorioOrdenavel" onclick="selectSuite(this, 'TestRelatorioOrdenavel', 'Relatório ordenável (4)')">
+            <div class="suite-icon">📊</div>
+            <div class="suite-name">Relatório ordenável</div>
+            <div class="suite-count">4 casos — markup para ordenação/busca no JS</div>
+        </button>
+        <button class="suite-btn" data-suite="TestAlgoritmosDSA" onclick="selectSuite(this, 'TestAlgoritmosDSA', 'Algoritmos DSA (28)')">
+            <div class="suite-icon">🧮</div>
+            <div class="suite-name">Estruturas de Dados</div>
+            <div class="suite-count">28 casos — busca, ordenação e estatísticas</div>
+        </button>
+        <button class="suite-btn" data-suite="TestIntegracaoAlgoritmosNoSistema" onclick="selectSuite(this, 'TestIntegracaoAlgoritmosNoSistema', 'Integração dos algoritmos (10)')">
+            <div class="suite-icon">🔗</div>
+            <div class="suite-name">Integração dos algoritmos</div>
+            <div class="suite-count">10 casos — espiões sobre get_session/rebalance</div>
+        </button>
+        <button class="suite-btn" data-suite="TestCarregamentoDoHistorico" onclick="selectSuite(this, 'TestCarregamentoDoHistorico', 'Carregamento do histórico (5)')">
+            <div class="suite-icon">🗄️</div>
+            <div class="suite-name">Carregamento do histórico</div>
+            <div class="suite-count">5 casos — banco ausente, corrompido, vazio</div>
+        </button>
+        <button class="suite-btn" data-suite="TestMenuTerminal" onclick="selectSuite(this, 'TestMenuTerminal', 'Menu de terminal (9)')">
+            <div class="suite-icon">⌨️</div>
+            <div class="suite-name">Menu de terminal</div>
+            <div class="suite-count">9 casos — opções, validações, EOFError</div>
+        </button>
+        <button class="suite-btn" data-suite="TestSeparacaoMemoriaHistorico" onclick="selectSuite(this, 'TestSeparacaoMemoriaHistorico', 'Memória × histórico (7)')">
+            <div class="suite-icon">🧩</div>
+            <div class="suite-name">Memória × histórico</div>
+            <div class="suite-count">7 casos — execução atual vs. arquivado</div>
+        </button>
+        <button class="suite-btn" data-suite="TestTarifaFonteUnica" onclick="selectSuite(this, 'TestTarifaFonteUnica', 'Tarifa com fonte única (2)')">
+            <div class="suite-icon">🎯</div>
+            <div class="suite-name">Tarifa com fonte única</div>
+            <div class="suite-count">2 casos — pricing_engine reexporta constantes</div>
+        </button>
+        <button class="suite-btn" data-suite="TestRecargaSemCadastro" onclick="selectSuite(this, 'TestRecargaSemCadastro', 'Recarga sem cadastro (20)')">
+            <div class="suite-icon">📷</div>
+            <div class="suite-name">Recarga sem cadastro</div>
+            <div class="suite-count">20 casos — QR do totem, caução, avulso</div>
         </button>
     </div>
 
